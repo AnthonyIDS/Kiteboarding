@@ -17,7 +17,7 @@
 // ---- Settings --------------------------------------------------------------
 
 /** Shared team access key. Change it, and rotate it when someone leaves. */
-const DASHBOARD_KEY = 'CHANGE-ME';
+const DASHBOARD_KEY = 'connect';
 
 /** ID of the student availability spreadsheet (the long ID in its URL). */
 const STUDENT_SHEET_ID = '';
