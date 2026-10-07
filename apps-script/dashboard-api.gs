@@ -1,19 +1,16 @@
 /**
  * Kiteboarding St. Petersburg: team dashboard API (dashboard-api.gs)
  *
- * Add this to the Apps Script project of a spreadsheet (Extensions → Apps
- * Script). That spreadsheet holds the Instructors and Time Off tabs. Lesson
- * requests and student availability can live in other spreadsheets; set
- * their IDs below. The script only reads them, so the doPost() that receives
- * Ninja Forms submissions is never touched.
+ * Serves the "Lesson Requests" tab of your Google Sheet to the GitHub
+ * dashboard as JSON. It only reads: it never changes the spreadsheet, so the
+ * website form that writes there keeps working.
  *
  * Apps Script files share one global scope. Apart from doGet,
- * setupDashboardTabs and the three settings below, every global here starts
- * with "dash" or "DASH_" so nothing collides with the existing script.
+ * checkDashboard and the settings below, every global here starts with
+ * "dash" or "DASH_" so nothing collides with other scripts in the project.
  *
  * GET <exec url>?key=DASHBOARD_KEY returns
- *   { ok, updated, lessons, instructors, timeOff, students }
- * where each of the last four is { headers: [...], rows: [{ header: value }] }.
+ *   { ok, updated, lessons: { headers: [...], rows: [{ header: value }] } }
  */
 
 // ---- Settings --------------------------------------------------------------
@@ -22,26 +19,14 @@
 const DASHBOARD_KEY = '';
 
 /**
- * ID of the spreadsheet with the "Lesson Requests" tab (the long ID in its
- * URL, between /d/ and /edit). Leave blank if that tab is in this spreadsheet.
+ * ID of your spreadsheet: the long part of its URL between /d/ and /edit.
+ * Leave blank to use the spreadsheet this script is attached to.
  */
-const LESSON_SHEET_ID = '';
-
-/** ID of the student availability spreadsheet (the long ID in its URL). */
-const STUDENT_SHEET_ID = '';
-
-/** Tab name in the student spreadsheet. Leave blank to use the first tab. */
-const STUDENT_TAB = '';
+const SHEET_ID = '';
 
 // ---- Internals -------------------------------------------------------------
 
 const DASH_LESSONS_TAB = 'Lesson Requests';
-const DASH_INSTRUCTORS_TAB = 'Instructors';
-const DASH_TIMEOFF_TAB = 'Time Off';
-
-const DASH_TAB_HEADERS = {};
-DASH_TAB_HEADERS[DASH_INSTRUCTORS_TAB] = ['Name', 'Phone', 'Email', 'Color'];
-DASH_TAB_HEADERS[DASH_TIMEOFF_TAB] = ['Instructor', 'Start Date', 'End Date', 'Notes'];
 
 function doGet(e) {
   try {
@@ -53,18 +38,12 @@ function doGet(e) {
       return dashJson_({ ok: false, error: 'unauthorized' });
     }
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = dashSpreadsheet_();
     const tz = ss.getSpreadsheetTimeZone();
-    const instructorsSheet = dashEnsureTab_(ss, DASH_INSTRUCTORS_TAB);
-    const timeOffSheet = dashEnsureTab_(ss, DASH_TIMEOFF_TAB);
-
     return dashJson_({
       ok: true,
       updated: Utilities.formatDate(new Date(), tz, "yyyy-MM-dd'T'HH:mm:ss"),
-      lessons: dashReadLessons_(ss),
-      instructors: dashReadSheet_(instructorsSheet, tz),
-      timeOff: dashReadSheet_(timeOffSheet, tz),
-      students: dashReadStudents_()
+      lessons: dashReadLessons_(ss, tz)
     });
   } catch (err) {
     return dashJson_({ ok: false, error: String((err && err.message) || err) });
@@ -72,51 +51,44 @@ function doGet(e) {
 }
 
 /**
- * Run once from the editor (select it in the toolbar, then Run). Creates the
- * Instructors and Time Off tabs if they're missing, and confirms the lesson
- * and student spreadsheets can be opened. The first run asks you to
- * authorize access.
+ * Run once from the editor (select it in the toolbar, then Run). The first
+ * run asks you to authorize access. The Execution log shows what the
+ * dashboard will see.
  */
-function setupDashboardTabs() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const tz = ss.getSpreadsheetTimeZone();
-  Object.keys(DASH_TAB_HEADERS).forEach(function (name) {
-    dashEnsureTab_(ss, name);
-  });
-
-  const lessons = dashReadLessons_(ss);
-  const students = dashReadStudents_();
-  Logger.log('Lesson Requests: %s', lessons.error ? 'ERROR: ' + lessons.error : lessons.rows.length + ' rows');
-  Logger.log('Instructors: %s rows', dashReadSheet_(ss.getSheetByName(DASH_INSTRUCTORS_TAB), tz).rows.length);
-  Logger.log('Time Off: %s rows', dashReadSheet_(ss.getSheetByName(DASH_TIMEOFF_TAB), tz).rows.length);
-  Logger.log('Students: %s', students.error ? 'ERROR: ' + students.error : students.rows.length + ' rows');
-  if (!String(DASHBOARD_KEY).trim()) Logger.log('Reminder: set DASHBOARD_KEY before deploying.');
+function checkDashboard() {
+  const ss = dashSpreadsheet_();
+  const lessons = dashReadLessons_(ss, ss.getSpreadsheetTimeZone());
+  Logger.log('Spreadsheet: ' + ss.getName());
+  Logger.log('Lesson Requests: ' + (lessons.error ? 'ERROR: ' + lessons.error : lessons.rows.length + ' rows'));
+  Logger.log(String(DASHBOARD_KEY).trim() ? 'Key is set.' : 'Reminder: set DASHBOARD_KEY before deploying.');
 }
 
-/** Returns the named tab, creating it with bold, frozen headers if needed. */
-function dashEnsureTab_(ss, name) {
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
+/** The spreadsheet set in SHEET_ID, or the one this script is attached to. */
+function dashSpreadsheet_() {
+  const id = String(SHEET_ID).trim();
+  if (id) {
     try {
-      sheet = ss.insertSheet(name);
+      return SpreadsheetApp.openById(id);
     } catch (err) {
-      // Another request may have created it a moment ago.
-      sheet = ss.getSheetByName(name);
-      if (!sheet) throw err;
+      throw new Error('Could not open the spreadsheet in SHEET_ID. Check the ID, then run checkDashboard to grant access.');
     }
   }
-  const headers = DASH_TAB_HEADERS[name];
-  if (headers && sheet.getLastRow() === 0) {
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
-    sheet.setFrozenRows(1);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('Set SHEET_ID in dashboard-api.gs');
+  return ss;
+}
+
+function dashReadLessons_(ss, tz) {
+  const sheet = ss.getSheetByName(DASH_LESSONS_TAB);
+  if (!sheet) {
+    return { headers: [], rows: [], error: 'No "' + DASH_LESSONS_TAB + '" tab in "' + ss.getName() + '". Check SHEET_ID in dashboard-api.gs' };
   }
-  return sheet;
+  return dashReadSheet_(sheet, tz);
 }
 
 /** Reads a tab generically: the header row gives the keys, blank rows are skipped. */
 function dashReadSheet_(sheet, tz) {
   const out = { headers: [], rows: [] };
-  if (!sheet) return out;
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
   if (lastRow < 1 || lastCol < 1) return out;
@@ -168,36 +140,6 @@ function dashCell_(value, displayValue, tz) {
   }
   if (typeof value === 'string') return value.trim();
   return value;
-}
-
-function dashReadLessons_(activeSs) {
-  try {
-    const ss = LESSON_SHEET_ID ? SpreadsheetApp.openById(LESSON_SHEET_ID) : activeSs;
-    const sheet = ss.getSheetByName(DASH_LESSONS_TAB);
-    if (!sheet) {
-      return { headers: [], rows: [], error: 'No "' + DASH_LESSONS_TAB + '" tab found' +
-        (LESSON_SHEET_ID ? ' in the lesson spreadsheet' : '. Set LESSON_SHEET_ID in dashboard-api.gs') };
-    }
-    return dashReadSheet_(sheet, ss.getSpreadsheetTimeZone());
-  } catch (err) {
-    return { headers: [], rows: [], error: 'Could not open the lesson spreadsheet: ' + ((err && err.message) || err) };
-  }
-}
-
-function dashReadStudents_() {
-  if (!STUDENT_SHEET_ID) {
-    return { headers: [], rows: [], error: 'STUDENT_SHEET_ID is not set in dashboard-api.gs' };
-  }
-  try {
-    const ss = SpreadsheetApp.openById(STUDENT_SHEET_ID);
-    const sheet = STUDENT_TAB ? ss.getSheetByName(STUDENT_TAB) : ss.getSheets()[0];
-    if (!sheet) {
-      return { headers: [], rows: [], error: 'Tab "' + STUDENT_TAB + '" was not found in the student spreadsheet' };
-    }
-    return dashReadSheet_(sheet, ss.getSpreadsheetTimeZone());
-  } catch (err) {
-    return { headers: [], rows: [], error: 'Could not open the student spreadsheet: ' + ((err && err.message) || err) };
-  }
 }
 
 function dashJson_(obj) {
