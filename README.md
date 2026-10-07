@@ -62,6 +62,7 @@ On first visit, each team member enters the access key once. The browser remembe
 ## Using the dashboard
 
 - **Tiles** count new requests (Status = "New"), requests from the last 7 days, booked requests, and the total.
+- **Lesson calendar** shows each request on the day the person asked for, using the sheet's date column (for example **Preferred Date**) and time column (for example **Preferred Time**) if there is one. Colors match the status. Click a day to see who asked for it, with their phone and email. A second-choice date column (for example **Alternate Date**) shows up too, marked "2nd". Requests with no readable date are counted under the calendar.
 - **Lesson requests** are listed newest first. Every form field appears automatically, so new form fields show up without any changes here. Search, or filter by status.
 - Put internal notes in the sheet's **Notes** column and update **Status** as you go (for example New → Contacted → Booked).
 - Press **Refresh** to see new submissions.
