@@ -182,6 +182,56 @@
   .req-notes b { font-weight: 600; }
   .req-time { margin-top: 10px; color: var(--muted); font-size: 12.5px; }
 
+  /* Calendar */
+  .cal-nav { display: flex; align-items: center; gap: 8px; }
+  .cal-title { font-size: 15px; font-weight: 600; min-width: 130px; text-align: center; }
+  .cal-note { color: var(--muted); font-size: 13px; padding: 0 18px 12px; }
+  .cal { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .cal-dow, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cal-dow div { padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  .cal-dow .short { display: none; }
+  .cal-day {
+    min-width: 0; min-height: 104px; margin: 0; padding: 4px 4px 6px;
+    border: 0; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    background: transparent; cursor: pointer; text-align: left;
+    display: flex; flex-direction: column; align-items: stretch; gap: 3px;
+  }
+  .cal-day:nth-child(7n) { border-right: 0; }
+  .cal-day:nth-last-child(-n+7) { border-bottom: 0; }
+  .cal-day:hover { background: var(--surface-2); }
+  .cal-day:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .cal-day.out { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+  .cal-day.out .cal-num { color: var(--muted); opacity: .7; }
+  .cal-day.today { background: var(--accent-soft); }
+  .cal-day.selected { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cal-num {
+    align-self: flex-start; display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 4px;
+    border-radius: 999px; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .cal-day.today .cal-num { background: var(--accent); color: var(--on-accent); }
+  .chip {
+    display: block; min-width: 0; padding: 1px 6px; border-radius: 5px;
+    font-size: 11.5px; font-weight: 600; line-height: 18px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    background: var(--neutral-soft); color: var(--neutral);
+  }
+  .chip.info { background: var(--info-soft); color: var(--info); }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.danger { background: var(--danger-soft); color: var(--danger); text-decoration: line-through; }
+  .chip-more { font-size: 11.5px; color: var(--muted); font-weight: 500; padding: 0 6px; }
+  .detail { padding: 16px 0 0; }
+  .detail h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+  .detail ul { list-style: none; margin: 0; padding: 0; }
+  .detail li { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+  .detail li:first-child { border-top: 0; }
+  .detail .when { flex: none; width: 76px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .detail .who { flex: 1; min-width: 0; }
+  .detail .who strong { font-weight: 600; }
+  .detail .muted { color: var(--muted); }
+  .detail .contact { margin-top: 2px; font-size: 13px; }
+  .detail .empty { padding: 4px 0; text-align: left; }
+
   .footer { color: var(--muted); font-size: 12.5px; text-align: center; padding: 8px 0 24px; }
 
   /* Tablet */
@@ -199,6 +249,21 @@
     .filters { padding: 0 14px 10px; gap: 8px; }
     .req-grid { grid-template-columns: minmax(0, 1fr); }
     .panel-body { padding: 0 14px 14px; }
+    .cal-note { padding: 0 14px 10px; }
+    .cal-dow div { padding: 6px 0; text-align: center; }
+    .cal-dow .long { display: none; }
+    .cal-dow .short { display: inline; }
+    .cal-day { min-height: 56px; padding: 3px 2px; align-items: center; }
+    .cal-num { align-self: center; min-width: 22px; height: 22px; font-size: 12px; }
+    /* Chips become small colored bars; tap the day to see who */
+    .chip { width: 100%; height: 4px; padding: 0; font-size: 0; line-height: 0; border-radius: 2px; text-decoration: none; }
+    .chip.info { background: var(--info); }
+    .chip.ok { background: var(--ok); }
+    .chip.warn { background: var(--warn); }
+    .chip.danger { background: var(--danger); opacity: .5; }
+    .chip:not(.info):not(.ok):not(.warn):not(.danger) { background: var(--neutral); }
+    .chip-more { font-size: 10px; padding: 0; line-height: 1; }
+    .detail .when { width: 64px; }
     .brand h1 { font-size: 17px; }
     .actions { width: 100%; }
     .actions .updated { flex: 1; }
@@ -257,6 +322,38 @@
   </div>
 
   <section class="kpis" id="kpis" aria-label="Summary"></section>
+
+  <section class="panel" aria-labelledby="cal-h">
+    <div class="panel-head">
+      <h2 id="cal-h">Lesson calendar</h2>
+      <div class="cal-nav">
+        <button class="btn btn-icon" type="button" id="cal-prev" aria-label="Previous month">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="cal-title" id="cal-title" aria-live="polite"></span>
+        <button class="btn btn-icon" type="button" id="cal-next" aria-label="Next month">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+        <button class="btn" type="button" id="cal-today">Today</button>
+      </div>
+    </div>
+    <div class="cal-note" id="cal-note"></div>
+    <div class="panel-body">
+      <div class="cal">
+        <div class="cal-dow" aria-hidden="true">
+          <div><span class="long">Sun</span><span class="short">S</span></div>
+          <div><span class="long">Mon</span><span class="short">M</span></div>
+          <div><span class="long">Tue</span><span class="short">T</span></div>
+          <div><span class="long">Wed</span><span class="short">W</span></div>
+          <div><span class="long">Thu</span><span class="short">T</span></div>
+          <div><span class="long">Fri</span><span class="short">F</span></div>
+          <div><span class="long">Sat</span><span class="short">S</span></div>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+      <div class="detail" id="cal-detail" aria-live="polite"></div>
+    </div>
+  </section>
 
   <section class="panel" aria-labelledby="lessons-h">
     <div class="panel-head"><h2 id="lessons-h">Lesson requests<span class="count" id="lessons-count"></span></h2></div>
@@ -437,6 +534,21 @@
     lc.phone = take([PHONE_RE]);
     lc.email = take([EMAILH_RE]);
 
+    // Calendar columns: the requested lesson date, an optional second-choice
+    // date, and a time. They stay on the cards too, so they aren't "used".
+    const free = lh.filter((h) => used.indexOf(h) < 0);
+    const ALT_RE = /\b(alt|alternat\w*|second|2nd|backup|other)\b/;
+    lc.date = findCol(free.filter((h) => !ALT_RE.test(norm(h))), [
+      /^(preferred|requested|desired|lesson|booking|appointment) date\b/,
+      /\b(preferred|requested|desired|lesson|booking)\b.*\bdate\b/,
+      /^(date|day)$/, /\bdate\b/
+    ]);
+    lc.altDate = findCol(free.filter((h) => h !== lc.date), [/\b(alt|alternat\w*|second|2nd|backup)\b.*\bdate\b/]);
+    lc.time = findCol(free.filter((h) => !ALT_RE.test(norm(h)) && !/time ?zone/.test(norm(h))), [
+      /\b(preferred|requested|desired|lesson|start)\b.*\btime\b/, /^time( slot)?$/, /\btime\b/
+    ]);
+    lc.type = findCol(free, [/\blesson\b.*\b(type|package)\b/, /\b(lesson|package|service|type)\b/], [lc.date, lc.altDate, lc.time]);
+
     const lessons = L.rows.map((r, idx) => {
       const name = lc.name ? r[lc.name] : [r[lc.first], r[lc.last]].filter((x) => !isBlank(x)).join(' ');
       const fields = lh.filter((h) => used.indexOf(h) < 0 && !isBlank(r[h])).map((h) => [h, fmtValue(r[h])]);
@@ -449,6 +561,10 @@
         phone: lc.phone && !isBlank(r[lc.phone]) ? String(r[lc.phone]) : '',
         email: lc.email && !isBlank(r[lc.email]) ? String(r[lc.email]).trim() : '',
         fields,
+        type: lc.type && !isBlank(r[lc.type]) ? fmtValue(r[lc.type]) : '',
+        date: lc.date ? r[lc.date] : '',
+        altDate: lc.altDate ? r[lc.altDate] : '',
+        time: lc.time ? r[lc.time] : '',
         hay: lh.map((h) => r[h]).concat(fields.map((f) => f[1])).join(' \u0001 ').toLowerCase()
       };
     });
@@ -459,8 +575,30 @@
       return tb - ta || b.idx - a.idx;
     });
 
+    // Calendar entries, by day
+    const days = {};
+    let undated = 0;
+    const put = (l, raw, alt) => {
+      const d = parseDate(raw);
+      if (!d) return false;
+      const t = lessonTime(raw, l.time);
+      const k = dayKey(d);
+      (days[k] = days[k] || []).push({ lesson: l, alt, mins: t.mins, label: t.label, exact: !!t.exact });
+      return true;
+    };
+    lessons.forEach((l) => {
+      if (!put(l, l.date, false)) undated++;
+      put(l, l.altDate, true);
+    });
+    Object.keys(days).forEach((k) => days[k].sort((a, b) =>
+      a.alt - b.alt || a.mins - b.mins || a.lesson.name.localeCompare(b.lesson.name)));
+
     const weekAgo = now.getTime() - 7 * DAY_MS;
     return {
+      days,
+      undated,
+      dateCol: lc.date,
+      timeCol: lc.time,
       updated: parseDate(data.updated),
       lessons,
       hasStatus: !!lc.status,
@@ -472,12 +610,41 @@
     };
   }
 
+  // Time of a requested lesson, for sorting (minutes after midnight) and
+  // display. Uses the time in the date cell if there is one, else the time
+  // column: "9:00 AM", "14:30" or words like "Morning".
+  const NO_TIME = 24 * 60;
+  function lessonTime(dateRaw, timeRaw) {
+    const ds = String(dateRaw == null ? '' : dateRaw);
+    if (/[T ]\d{1,2}:\d{2}/.test(ds) && !/T00:00(:00)?$/.test(ds)) {
+      const d = parseDate(ds);
+      if (d) return { mins: d.getHours() * 60 + d.getMinutes(), label: fmtTime(d), exact: true };
+    }
+    const s = String(timeRaw == null ? '' : timeRaw).trim();
+    if (!s) return { mins: NO_TIME, label: '' };
+    const iso = s.match(/T(\d{2}):(\d{2})/);
+    let m = iso || s.match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])\.?\s*m?\.?\b/i) || s.match(/^(\d{1,2}):(\d{2})\b/);
+    if (m) {
+      let h = +m[1];
+      if (m[3]) { h %= 12; if (/p/i.test(m[3])) h += 12; }
+      if (h < 24) {
+        const d = new Date(2000, 0, 1, h, +(m[2] || 0));
+        return { mins: h * 60 + d.getMinutes(), label: fmtTime(d), exact: true };
+      }
+    }
+    const w = s.toLowerCase();
+    const mins = /morning|\bam\b/.test(w) ? 8 * 60 : /afternoon|\bpm\b/.test(w) ? 13 * 60
+      : /midday|noon|lunch/.test(w) ? 12 * 60 : /evening|sunset|night/.test(w) ? 17 * 60 : NO_TIME - 1;
+    return { mins, label: s };
+  }
+
   // ---------- Rendering ----------
   function render() {
     const m = state.model;
     if (!m) return;
     $('updated').textContent = m.updated ? 'Updated ' + fmtDay(m.updated) + ', ' + fmtTime(m.updated) : '';
     renderKpis();
+    renderCalendar();
     renderStatusFilter();
     renderLessons();
   }
@@ -542,6 +709,99 @@
         (when ? '<div class="req-time">' + esc(when) + '</div>' : '') +
         '</article>';
     }).join('');
+  }
+
+  // ---------- Calendar ----------
+  const MAX_CHIPS = 3;
+
+  function goToToday() {
+    const t = new Date();
+    state.view = { y: t.getFullYear(), m: t.getMonth() };
+    state.selected = dayKey(t);
+  }
+  function shiftMonth(n) {
+    const d = new Date(state.view.y, state.view.m + n, 1);
+    state.view = { y: d.getFullYear(), m: d.getMonth() };
+    // Keep the selection inside the month being shown.
+    const sel = parseDate(state.selected);
+    if (!sel || sel.getMonth() !== d.getMonth() || sel.getFullYear() !== d.getFullYear()) {
+      const t = new Date();
+      state.selected = t.getMonth() === d.getMonth() && t.getFullYear() === d.getFullYear() ? dayKey(t) : dayKey(d);
+    }
+    renderCalendar();
+  }
+
+  function chipText(e) {
+    const name = e.lesson.name || 'Unnamed';
+    const first = name.split(/\s+/)[0];
+    const time = e.exact ? fmtShortTime(e.mins) + ' ' : '';
+    return (e.alt ? '2nd: ' : '') + time + first;
+  }
+  function fmtShortTime(mins) {
+    const h = Math.floor(mins / 60), mi = mins % 60;
+    return ((h % 12) || 12) + (mi ? ':' + pad(mi) : '') + (h < 12 ? 'a' : 'p');
+  }
+
+  function renderCalendar() {
+    const m = state.model;
+    if (!state.view) goToToday();
+    const y = state.view.y, mo = state.view.m;
+    const first = new Date(y, mo, 1);
+    const last = new Date(y, mo + 1, 0);
+    const gridStart = addDays(first, -first.getDay());
+    const gridEnd = addDays(last, 6 - last.getDay());
+    const todayK = dayKey(new Date());
+
+    $('cal-title').textContent = fmt(first, { month: 'long', year: 'numeric' });
+
+    let html = '';
+    for (let d = gridStart; d <= gridEnd; d = addDays(d, 1)) {
+      const k = dayKey(d);
+      const items = m.days[k] || [];
+      const cls = ['cal-day'];
+      if (d.getMonth() !== mo) cls.push('out');
+      if (k === todayK) cls.push('today');
+      if (k === state.selected) cls.push('selected');
+      const label = fmt(d, { weekday: 'long', month: 'long', day: 'numeric' }) +
+        (items.length ? ', ' + items.length + (items.length === 1 ? ' request' : ' requests') : '');
+      html += '<button type="button" class="' + cls.join(' ') + '" data-day="' + k + '" aria-pressed="' + (k === state.selected) +
+        '" aria-label="' + esc(label) + '"><span class="cal-num">' + d.getDate() + '</span>' +
+        items.slice(0, MAX_CHIPS).map((e) => '<span class="chip ' + statusTone(e.lesson.status) + '">' + esc(chipText(e)) + '</span>').join('') +
+        (items.length > MAX_CHIPS ? '<span class="chip-more">+' + (items.length - MAX_CHIPS) + ' more</span>' : '') +
+        '</button>';
+    }
+    $('cal-grid').innerHTML = html;
+
+    let note;
+    if (!m.dateCol) {
+      note = m.lessons.length ? 'No date column found on the Lesson Requests tab, so nothing can go on the calendar yet.' : '';
+    } else {
+      note = 'Each request is placed on its “' + m.dateCol + '”' + (m.timeCol ? ' at its “' + m.timeCol + '”' : '') + '. Tap a day to see who.';
+      if (m.undated) note += ' ' + m.undated + (m.undated === 1 ? ' request has' : ' requests have') + ' no date the calendar can read.';
+    }
+    $('cal-note').textContent = note;
+    $('cal-note').hidden = !note;
+    renderDetail();
+  }
+
+  function renderDetail() {
+    const d = parseDate(state.selected);
+    const items = state.model.days[state.selected] || [];
+    const title = fmt(d, { weekday: 'long', month: 'long', day: 'numeric', year: d.getFullYear() !== thisYear ? 'numeric' : undefined });
+    $('cal-detail').innerHTML = '<h3>' + esc(title) + '</h3>' + (items.length
+      ? '<ul>' + items.map((e) => {
+          const l = e.lesson;
+          const contact = [];
+          if (l.phone) contact.push(phoneLink(l.phone, true));
+          if (l.email) contact.push(mailLink(l.email, true));
+          return '<li><span class="when">' + esc(e.label || 'Any time') + '</span><span class="who"><strong>' +
+            esc(l.name || 'Unnamed request') + '</strong>' +
+            (l.status ? ' <span class="pill ' + statusTone(l.status) + '">' + esc(l.status) + '</span>' : '') +
+            ((l.type || e.alt) ? '<div class="muted">' + esc([e.alt ? 'Second-choice date' : '', l.type].filter(Boolean).join(' · ')) + '</div>' : '') +
+            (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') +
+            '</span></li>';
+        }).join('') + '</ul>'
+      : '<div class="empty">No lesson requests for this day.</div>');
   }
 
   // ---------- Data loading ----------
@@ -628,16 +888,17 @@
       ok: true,
       updated: at(0, now.getHours(), now.getMinutes()),
       lessons: {
-        headers: ['Submitted', 'Status', 'Notes', 'Name', 'Email', 'Phone', 'Lesson Type', 'Preferred Date', 'Experience Level', 'Weight (lbs)', 'Message'],
+        headers: ['Submitted', 'Status', 'Notes', 'Name', 'Email', 'Phone', 'Lesson Type', 'Preferred Date', 'Preferred Time', 'Experience Level', 'Weight (lbs)', 'Message'],
         rows: [
-          { Submitted: ago(42), Status: 'New', Notes: '', Name: 'Hannah Kowalski', Email: 'hannah.k@example.com', Phone: '(727) 555-0148', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(3), 'Experience Level': 'Never kited', 'Weight (lbs)': 140, Message: 'Birthday present for my husband. Can we do it together?' },
-          { Submitted: ago(60 * 5 + 12), Status: 'New', Notes: '', Name: 'Luis Ortega', Email: 'luis.ortega@example.com', Phone: '8135550172', 'Lesson Type': 'Private package (6 hrs)', 'Preferred Date': D(5), 'Experience Level': 'Some trainer kite', 'Weight (lbs)': 185, Message: 'Weekends work best.' },
-          { Submitted: ago(60 * 26), Status: 'Contacted', Notes: 'Left voicemail, texting tomorrow.', Name: 'Priya Raman', Email: 'priya.r@example.com', Phone: '(727) 555-0113', 'Lesson Type': 'Water start clinic', 'Preferred Date': D(2), 'Experience Level': 'Body dragging', 'Weight (lbs)': 128, Message: '' },
-          { Submitted: ago(60 * 50), Status: 'Booked', Notes: 'Booked with Marco, Fort De Soto, 9am.', Name: 'Jake Thornton', Email: 'jthornton@example.com', Phone: '(941) 555-0190', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(1), 'Experience Level': 'Never kited', 'Weight (lbs)': 200, Message: 'Coming from Tampa.' },
-          { Submitted: ago(60 * 24 * 4 + 90), Status: 'New', Notes: '', Name: 'Amelia Chen', Email: 'amelia.chen@example.com', Phone: '(727) 555-0127', 'Lesson Type': 'Foil lesson', 'Preferred Date': D(9), 'Experience Level': 'Independent rider', 'Weight (lbs)': 135, Message: 'Own board, need foil rental.' },
-          { Submitted: ago(60 * 24 * 6), Status: 'Completed', Notes: 'Great progress. Ready for upwind.', Name: 'Marcus Bell', Email: 'marcus.bell@example.com', Phone: '(813) 555-0166', 'Lesson Type': 'Private package (6 hrs)', 'Preferred Date': D(-3), 'Experience Level': 'Body dragging', 'Weight (lbs)': 172, Message: '' },
-          { Submitted: ago(60 * 24 * 11), Status: 'Cancelled', Notes: 'Moved out of state.', Name: 'Olivia Grant', Email: 'olivia.grant@example.com', Phone: '(727) 555-0109', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(-8), 'Experience Level': 'Never kited', 'Weight (lbs)': 150, Message: '' },
-          { Submitted: ago(60 * 24 * 15), Status: 'Booked', Notes: 'Recurring Tuesdays.', Name: 'Noah Fischer', Email: 'noah.f@example.com', Phone: '(727) 555-0181', 'Lesson Type': 'Coaching session', 'Preferred Date': D(-14), 'Experience Level': 'Independent rider', 'Weight (lbs)': 165, Message: 'Working on jumps.' }
+          { Submitted: ago(42), Status: 'New', Notes: '', Name: 'Hannah Kowalski', Email: 'hannah.k@example.com', Phone: '(727) 555-0148', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(3), 'Preferred Time': '9:00 AM', 'Experience Level': 'Never kited', 'Weight (lbs)': 140, Message: 'Birthday present for my husband. Can we do it together?' },
+          { Submitted: ago(60 * 5 + 12), Status: 'New', Notes: '', Name: 'Luis Ortega', Email: 'luis.ortega@example.com', Phone: '8135550172', 'Lesson Type': 'Private package (6 hrs)', 'Preferred Date': D(5), 'Preferred Time': 'Afternoon', 'Experience Level': 'Some trainer kite', 'Weight (lbs)': 185, Message: 'Weekends work best.' },
+          { Submitted: ago(60 * 26), Status: 'Contacted', Notes: 'Left voicemail, texting tomorrow.', Name: 'Priya Raman', Email: 'priya.r@example.com', Phone: '(727) 555-0113', 'Lesson Type': 'Water start clinic', 'Preferred Date': D(2), 'Preferred Time': '10:30 AM', 'Experience Level': 'Body dragging', 'Weight (lbs)': 128, Message: '' },
+          { Submitted: ago(60 * 50), Status: 'Booked', Notes: 'Booked with Marco, Fort De Soto, 9am.', Name: 'Jake Thornton', Email: 'jthornton@example.com', Phone: '(941) 555-0190', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(1), 'Preferred Time': '9:00 AM', 'Experience Level': 'Never kited', 'Weight (lbs)': 200, Message: 'Coming from Tampa.' },
+          { Submitted: ago(60 * 60 * 2), Status: 'New', Notes: '', Name: 'Sofia Martins', Email: 'sofia.m@example.com', Phone: '(727) 555-0135', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(1), 'Preferred Time': '1:00 PM', 'Experience Level': 'Never kited', 'Weight (lbs)': 130, Message: 'Any day this week.' },
+          { Submitted: ago(60 * 24 * 4 + 90), Status: 'New', Notes: '', Name: 'Amelia Chen', Email: 'amelia.chen@example.com', Phone: '(727) 555-0127', 'Lesson Type': 'Foil lesson', 'Preferred Date': D(9), 'Preferred Time': '2:00 PM', 'Experience Level': 'Independent rider', 'Weight (lbs)': 135, Message: 'Own board, need foil rental.' },
+          { Submitted: ago(60 * 24 * 6), Status: 'Completed', Notes: 'Great progress. Ready for upwind.', Name: 'Marcus Bell', Email: 'marcus.bell@example.com', Phone: '(813) 555-0166', 'Lesson Type': 'Private package (6 hrs)', 'Preferred Date': D(-3), 'Preferred Time': 'Morning', 'Experience Level': 'Body dragging', 'Weight (lbs)': 172, Message: '' },
+          { Submitted: ago(60 * 24 * 11), Status: 'Cancelled', Notes: 'Moved out of state.', Name: 'Olivia Grant', Email: 'olivia.grant@example.com', Phone: '(727) 555-0109', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(-8), 'Preferred Time': '', 'Experience Level': 'Never kited', 'Weight (lbs)': 150, Message: '' },
+          { Submitted: ago(60 * 24 * 15), Status: 'Booked', Notes: 'Recurring Tuesdays.', Name: 'Noah Fischer', Email: 'noah.f@example.com', Phone: '(727) 555-0181', 'Lesson Type': 'Coaching session', 'Preferred Date': D(-14), 'Preferred Time': '5:00 PM', 'Experience Level': 'Independent rider', 'Weight (lbs)': 165, Message: 'Working on jumps.' }
         ]
       }
     };
@@ -662,8 +923,22 @@
     showError('');
     $('lessons-q').value = '';
     $('status-filter').value = '';
-    ['kpis', 'lessons'].forEach((id) => { $(id).innerHTML = ''; });
+    state.view = null;
+    ['kpis', 'lessons', 'cal-grid', 'cal-detail'].forEach((id) => { $(id).innerHTML = ''; });
     showGate();
+  });
+  $('cal-prev').addEventListener('click', () => state.model && shiftMonth(-1));
+  $('cal-next').addEventListener('click', () => state.model && shiftMonth(1));
+  $('cal-today').addEventListener('click', () => { if (state.model) { goToToday(); renderCalendar(); } });
+  $('cal-grid').addEventListener('click', (e) => {
+    const btn = e.target.closest('.cal-day');
+    if (!btn || !state.model) return;
+    state.selected = btn.dataset.day;
+    const d = parseDate(state.selected);
+    if (d.getMonth() !== state.view.m || d.getFullYear() !== state.view.y) {
+      state.view = { y: d.getFullYear(), m: d.getMonth() };
+    }
+    renderCalendar();
   });
   $('lessons-q').addEventListener('input', () => state.model && renderLessons());
   $('status-filter').addEventListener('change', () => state.model && renderLessons());
