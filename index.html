@@ -21,7 +21,6 @@
     --accent-hover: #0b5f76;
     --accent-soft: #e2f3f7;
     --on-accent: #ffffff;
-    --today: #0e7490;
     --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 6px 20px rgba(15, 23, 42, .05);
     --radius: 14px;
     --info: #1d4ed8;   --info-soft: #dbeafe;
@@ -29,10 +28,6 @@
     --warn: #b45309;   --warn-soft: #fef3c7;
     --danger: #b91c1c; --danger-soft: #fee2e2;
     --neutral: #475569; --neutral-soft: #e9edf2;
-    --num-h: 30px;
-    --lane-h: 20px;
-    --lane-gap: 3px;
-    --week-min: 104px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -46,7 +41,6 @@
       --accent-hover: #47c6da;
       --accent-soft: rgba(34, 181, 204, .14);
       --on-accent: #062029;
-      --today: #22b5cc;
       --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25);
       --info: #93c5fd;   --info-soft: rgba(59, 130, 246, .18);
       --ok: #86efac;     --ok-soft: rgba(34, 197, 94, .16);
@@ -68,7 +62,7 @@
   }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  button, input { font: inherit; color: inherit; }
+  button, input, select { font: inherit; color: inherit; }
   [hidden] { display: none !important; }
   .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
 
@@ -82,7 +76,7 @@
     transition: background .15s, border-color .15s;
   }
   .btn:hover { background: var(--surface-2); }
-  .btn:focus-visible, .cal-day:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .btn-primary:hover { background: var(--accent-hover); }
   .btn svg { width: 16px; height: 16px; }
@@ -141,31 +135,30 @@
   .kpi-accent .kpi-value { color: var(--accent); }
 
   /* Panels */
-  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 20px; }
   .panel {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     box-shadow: var(--shadow); min-width: 0; display: flex; flex-direction: column;
     margin-bottom: 20px;
   }
-  .grid-2 .panel { margin-bottom: 0; }
   .panel-head {
     display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
     padding: 16px 18px 12px;
   }
   .panel-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.005em; }
   .count { color: var(--muted); font-weight: 500; font-size: 13px; margin-left: 6px; }
-  .search { position: relative; padding: 0 18px 12px; }
-  .search svg { position: absolute; left: 30px; top: 11px; width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
+  .filters { display: flex; gap: 10px; padding: 0 18px 12px; }
+  .search { position: relative; flex: 1; min-width: 0; }
+  .search svg { position: absolute; left: 12px; top: 11px; width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
   .search .field { height: 38px; padding-left: 36px; background: var(--surface-2); border-color: transparent; }
   .search .field:focus { background: var(--surface); border-color: var(--border); }
+  .status-filter { height: 38px; padding: 0 10px; border: 1px solid transparent; border-radius: 10px; background: var(--surface-2); color: var(--text); max-width: 45%; }
   .panel-body { padding: 0 18px 18px; min-width: 0; }
-  .scroll { max-height: 640px; overflow: auto; }
   .empty { color: var(--muted); padding: 24px 0; text-align: center; }
   .note-error { color: var(--danger); padding: 16px 0; }
 
   /* Lesson request cards */
-  .req { border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
-  .req:last-child { margin-bottom: 0; }
+  .req-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+  .req { border: 1px solid var(--border); border-radius: 12px; padding: 14px; min-width: 0; }
   .req-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
   .req h3 { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
   .pill {
@@ -189,109 +182,26 @@
   .req-notes b { font-weight: 600; }
   .req-time { margin-top: 10px; color: var(--muted); font-size: 12.5px; }
 
-  /* Student table */
-  .table-wrap { overflow: auto; max-height: 640px; border: 1px solid var(--border); border-radius: 10px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { position: sticky; top: 0; background: var(--surface-2); font-weight: 600; font-size: 12.5px; color: var(--muted); white-space: nowrap; z-index: 1; }
-  td { min-width: 90px; max-width: 280px; overflow-wrap: anywhere; }
-  td.nowrap { white-space: nowrap; max-width: none; overflow-wrap: normal; }
-  tr:last-child td { border-bottom: 0; }
-  tbody tr:hover td { background: var(--surface-2); }
-
-  /* Instructors */
-  .inst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-  .inst { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
-  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; display: inline-block; }
-  .inst .dot { margin-top: 5px; }
-  .inst-main { min-width: 0; }
-  .inst-name { font-weight: 600; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .badge-off {
-    font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
-    padding: 1px 7px; border-radius: 999px; background: var(--danger-soft); color: var(--danger);
-  }
-  .inst .contact { flex-direction: column; gap: 2px; margin-top: 4px; font-size: 13px; }
-
-  /* Calendar */
-  .cal-nav { display: flex; align-items: center; gap: 8px; }
-  .cal-title { font-size: 15px; font-weight: 600; min-width: 130px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 0 18px 12px; color: var(--muted); font-size: 13px; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend .dot { width: 10px; height: 10px; }
-  .cal { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  .cal-dow, .cal-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-  .cal-dow div { padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border); }
-  .cal-dow .short { display: none; }
-  .cal-week { min-height: var(--week-min); row-gap: var(--lane-gap); border-bottom: 1px solid var(--border); }
-  .cal-week:last-child { border-bottom: 0; }
-  .cal-day {
-    grid-row: 1 / -1; margin: 0; padding: 0; border: 0; border-right: 1px solid var(--border);
-    background: transparent; cursor: pointer; min-width: 0;
-    display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start;
-  }
-  .cal-day:nth-child(7) { border-right: 0; }
-  .cal-day:hover { background: var(--surface-2); }
-  .cal-day.out { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
-  .cal-day.out .cal-num { color: var(--muted); opacity: .7; }
-  .cal-day.today { background: var(--accent-soft); }
-  .cal-day.selected { box-shadow: inset 0 0 0 2px var(--accent); }
-  .cal-num {
-    display: inline-grid; place-items: center; min-width: 24px; height: 24px; margin: 4px 0 0 6px; padding: 0 4px;
-    border-radius: 999px; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums;
-  }
-  .cal-day.today .cal-num { background: var(--today); color: var(--on-accent); }
-  .cal-bar {
-    position: relative; z-index: 1; pointer-events: none; min-width: 0;
-    margin: 0 4px; padding: 0 8px; border-radius: 6px;
-    font-size: 11.5px; font-weight: 600; line-height: var(--lane-h);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  /* Bars that continue into the next/previous week run flush to the edge. */
-  .cal-bar.cont-l { margin-left: 0; }
-  .cal-bar.cont-r { margin-right: 0; }
-  .detail { padding: 16px 0 0; }
-  .detail h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
-  .detail ul { list-style: none; margin: 0; padding: 0; }
-  .detail li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
-  .detail li:first-child { border-top: 0; }
-  .detail li .dot { position: relative; top: 1px; }
-  .detail .muted { color: var(--muted); }
-  .detail .empty { padding: 4px 0; text-align: left; }
-
   .footer { color: var(--muted); font-size: 12.5px; text-align: center; padding: 8px 0 24px; }
 
   /* Tablet */
   @media (max-width: 960px) {
     .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .grid-2 { grid-template-columns: minmax(0, 1fr); }
   }
   /* Phone */
   @media (max-width: 640px) {
-    :root { --num-h: 26px; --lane-h: 4px; --lane-gap: 2px; --week-min: 58px; }
     .wrap { padding: 16px; }
     .kpis { gap: 10px; margin-bottom: 16px; }
     .kpi { padding: 12px 14px; }
     .kpi-value { font-size: 24px; }
-    .grid-2 { gap: 16px; margin-bottom: 16px; }
     .panel { margin-bottom: 16px; }
     .panel-head { padding: 14px 14px 10px; }
-    .search { padding: 0 14px 10px; }
-    .search svg { left: 26px; }
+    .filters { padding: 0 14px 10px; gap: 8px; }
+    .req-grid { grid-template-columns: minmax(0, 1fr); }
     .panel-body { padding: 0 14px 14px; }
-    .legend { padding: 0 14px 10px; }
-    .scroll, .table-wrap { max-height: 520px; }
     .brand h1 { font-size: 17px; }
     .actions { width: 100%; }
     .actions .updated { flex: 1; }
-    .cal-dow div { padding: 6px 0; text-align: center; }
-    .cal-dow .long { display: none; }
-    .cal-dow .short { display: inline; }
-    .cal-num { margin: 2px 0 0; min-width: 22px; height: 22px; font-size: 12px; }
-    .cal-day { align-items: center; }
-    /* Bars become thin colored lines */
-    .cal-bar { padding: 0; margin: 0 3px; font-size: 0; line-height: 0; border-radius: 2px; }
-    .cal-bar.cont-l { margin-left: 0; }
-    .cal-bar.cont-r { margin-right: 0; }
   }
 </style>
 </head>
@@ -348,64 +258,19 @@
 
   <section class="kpis" id="kpis" aria-label="Summary"></section>
 
-  <div class="grid-2">
-    <section class="panel" aria-labelledby="lessons-h">
-      <div class="panel-head"><h2 id="lessons-h">Lesson requests<span class="count" id="lessons-count"></span></h2></div>
+  <section class="panel" aria-labelledby="lessons-h">
+    <div class="panel-head"><h2 id="lessons-h">Lesson requests<span class="count" id="lessons-count"></span></h2></div>
+    <div class="filters">
       <div class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="field" id="lessons-q" type="search" placeholder="Search requests" aria-label="Search lesson requests">
       </div>
-      <div class="panel-body scroll" id="lessons"></div>
-    </section>
-
-    <section class="panel" aria-labelledby="students-h">
-      <div class="panel-head"><h2 id="students-h">Student availability<span class="count" id="students-count"></span></h2></div>
-      <div class="search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input class="field" id="students-q" type="search" placeholder="Search students" aria-label="Search student availability">
-      </div>
-      <div class="panel-body" id="students"></div>
-    </section>
-  </div>
-
-  <section class="panel" aria-labelledby="inst-h">
-    <div class="panel-head"><h2 id="inst-h">Instructors<span class="count" id="inst-count"></span></h2></div>
-    <div class="panel-body"><div class="inst-grid" id="instructors"></div></div>
+      <select class="status-filter" id="status-filter" aria-label="Filter by status"><option value="">All statuses</option></select>
+    </div>
+    <div class="panel-body"><div class="req-grid" id="lessons"></div></div>
   </section>
 
-  <section class="panel" aria-labelledby="cal-h">
-    <div class="panel-head">
-      <h2 id="cal-h">Instructor time off</h2>
-      <div class="cal-nav">
-        <button class="btn btn-icon" type="button" id="cal-prev" aria-label="Previous month">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <span class="cal-title" id="cal-title" aria-live="polite"></span>
-        <button class="btn btn-icon" type="button" id="cal-next" aria-label="Next month">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
-        <button class="btn" type="button" id="cal-today">Today</button>
-      </div>
-    </div>
-    <div class="legend" id="legend"></div>
-    <div class="panel-body">
-      <div class="cal" id="cal">
-        <div class="cal-dow" aria-hidden="true">
-          <div><span class="long">Sun</span><span class="short">S</span></div>
-          <div><span class="long">Mon</span><span class="short">M</span></div>
-          <div><span class="long">Tue</span><span class="short">T</span></div>
-          <div><span class="long">Wed</span><span class="short">W</span></div>
-          <div><span class="long">Thu</span><span class="short">T</span></div>
-          <div><span class="long">Fri</span><span class="short">F</span></div>
-          <div><span class="long">Sat</span><span class="short">S</span></div>
-        </div>
-        <div id="cal-weeks"></div>
-      </div>
-      <div class="detail" id="cal-detail" aria-live="polite"></div>
-    </div>
-  </section>
-
-  <div class="footer">Data comes from the team Google Sheets. Edit the sheets, then press Refresh.</div>
+  <div class="footer">Lesson requests come from the team Google Sheet. Press Refresh to see new ones.</div>
 </div>
 
 <script>
@@ -416,8 +281,6 @@
   const API_URL = 'https://script.google.com/macros/s/AKfycbxdhVoA6O8AkcDy9F2urjRvR7B_03CZgrdcm-QjEVlR4nt_W3ULCbwMoS6DQynV5ncW/exec';
 
   const KEY_STORAGE = 'ksp-dashboard-key';
-  const PALETTE = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2',
-                   '#dc2626', '#4f46e5', '#65a30d', '#c026d3', '#0d9488', '#ea580c'];
   const DAY_MS = 864e5;
 
   const params = new URLSearchParams(location.search);
@@ -474,11 +337,6 @@
     return fmt(d, o);
   }
   function fmtTime(d) { return fmt(d, { hour: 'numeric', minute: '2-digit' }); }
-  function fmtRange(a, b) {
-    if (diffDays(a, b) === 0) return fmtDay(a);
-    const yr = a.getFullYear() !== b.getFullYear();
-    return fmtDay(a, yr) + ' – ' + fmtDay(b, yr);
-  }
   function relTime(d) {
     const mins = Math.round((Date.now() - d.getTime()) / 60000);
     if (mins < 1) return 'just now';
@@ -546,21 +404,6 @@
   const PHONE_RE = /\b(phone|mobile|cell|tel|telephone|whatsapp)\b/;
   const EMAILH_RE = /\be-?mail\b/;
 
-  function validHex(v) {
-    const s = String(v == null ? '' : v).trim();
-    const m = s.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
-    if (!m) return '';
-    let h = m[1].toLowerCase();
-    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
-    return '#' + h;
-  }
-  function textOn(hex) {
-    const n = parseInt(hex.slice(1), 16);
-    const lin = (c) => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); };
-    const L = .2126 * lin(n >> 16 & 255) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255);
-    return L > .4 ? '#0f172a' : '#ffffff';
-  }
-
   function statusTone(s) {
     const t = norm(s);
     if (!t) return '';
@@ -578,7 +421,6 @@
 
   function buildModel(data) {
     const now = new Date();
-    const today = startOfDay(now);
 
     // Lesson requests
     const L = table(data.lessons);
@@ -617,80 +459,6 @@
       return tb - ta || b.idx - a.idx;
     });
 
-    // Instructors
-    const I = table(data.instructors);
-    const ih = I.headers;
-    const ic = {};
-    ic.name = findCol(ih, [/^name$/, /^(instructor|full name|instructor name)$/, /\bname\b/, /\binstructor\b/]);
-    ic.phone = findCol(ih, [PHONE_RE], [ic.name]);
-    ic.email = findCol(ih, [EMAILH_RE], [ic.name]);
-    ic.color = findCol(ih, [/^colou?r$/, /\bcolou?r\b/], [ic.name]);
-
-    // Time off. "Instructor" contains "to", so end-date patterns use word boundaries.
-    const T = table(data.timeOff);
-    const th = T.headers;
-    const tc = {};
-    tc.who = findCol(th, [/^instructor$/, /^(name|who|staff|person|instructor name)$/, /\binstructor\b/, /\bname\b/]);
-    tc.start = findCol(th, [/^start( date)?$/, /^(from|begin|begins|first day)\b/, /\bstart\b/], [tc.who]);
-    tc.end = findCol(th, [/^end( date)?$/, /^(to|until|through|thru|last day|back|returns?)\b/, /\b(end|to|until|through|thru)\b/], [tc.who, tc.start]);
-    tc.notes = findCol(th, [/^notes?$/, /\b(notes?|reason|comments?|details?)\b/], [tc.who, tc.start, tc.end]);
-
-    // People and colors: instructors first (sheet order), then anyone only in Time Off.
-    const people = new Map();
-    const custom = new Set(I.rows.map((r) => validHex(ic.color ? r[ic.color] : '')).filter(Boolean));
-    const freePalette = PALETTE.filter((c) => !custom.has(c));
-    let pi = 0;
-    const nextColor = () => (freePalette.length ? freePalette : PALETTE)[pi++ % (freePalette.length || PALETTE.length)];
-    function person(name, extra) {
-      const key = norm(name);
-      if (!people.has(key)) {
-        const color = (extra && extra.color) || nextColor();
-        people.set(key, Object.assign({ key, name: String(name).trim(), order: people.size, color, fg: textOn(color),
-          phone: '', email: '', isInstructor: false }, extra, { color, fg: textOn(color) }));
-      }
-      return people.get(key);
-    }
-    const instructors = [];
-    I.rows.forEach((r) => {
-      const name = ic.name ? r[ic.name] : '';
-      if (isBlank(name) || people.has(norm(name))) return;
-      instructors.push(person(name, {
-        isInstructor: true,
-        color: validHex(ic.color ? r[ic.color] : ''),
-        phone: ic.phone && !isBlank(r[ic.phone]) ? String(r[ic.phone]) : '',
-        email: ic.email && !isBlank(r[ic.email]) ? String(r[ic.email]).trim() : ''
-      }));
-    });
-
-    const timeOff = [];
-    T.rows.forEach((r) => {
-      const who = tc.who ? r[tc.who] : '';
-      const s = tc.start ? parseDate(r[tc.start]) : null;
-      if (isBlank(who) || !s) return;
-      let start = startOfDay(s);
-      let end = tc.end ? parseDate(r[tc.end]) : null;
-      end = end ? startOfDay(end) : start;
-      if (end < start) { const t = start; start = end; end = t; }
-      timeOff.push({ person: person(who), start, end, notes: tc.notes && !isBlank(r[tc.notes]) ? String(r[tc.notes]).trim() : '' });
-    });
-    timeOff.sort((a, b) => a.start - b.start || a.person.order - b.person.order);
-
-    const offToday = [];
-    timeOff.forEach((t) => {
-      if (t.start <= today && t.end >= today && offToday.indexOf(t.person) < 0) offToday.push(t.person);
-    });
-    offToday.sort((a, b) => a.order - b.order);
-
-    // Students: generic table
-    const S = table(data.students);
-    const students = {
-      headers: S.headers,
-      rows: S.rows.map((r) => ({ r, hay: S.headers.map((h) => r[h] + ' ' + fmtValue(r[h])).join(' \u0001 ').toLowerCase() })),
-      phoneCols: S.headers.filter((h) => PHONE_RE.test(norm(h))),
-      emailCols: S.headers.filter((h) => EMAILH_RE.test(norm(h))),
-      error: S.error
-    };
-
     const weekAgo = now.getTime() - 7 * DAY_MS;
     return {
       updated: parseDate(data.updated),
@@ -698,12 +466,9 @@
       hasStatus: !!lc.status,
       newCount: lessons.filter((l) => /^new$/i.test(l.status)).length,
       weekCount: lessons.filter((l) => l.submitted && l.submitted.getTime() >= weekAgo).length,
-      lessonsError: L.error,
-      instructors,
-      people: Array.from(people.values()),
-      timeOff,
-      offToday,
-      students
+      bookedCount: lessons.filter((l) => statusTone(l.status) === 'ok').length,
+      statuses: Array.from(new Set(lessons.map((l) => l.status).filter(Boolean))).sort(),
+      lessonsError: L.error
     };
   }
 
@@ -713,20 +478,28 @@
     if (!m) return;
     $('updated').textContent = m.updated ? 'Updated ' + fmtDay(m.updated) + ', ' + fmtTime(m.updated) : '';
     renderKpis();
+    renderStatusFilter();
     renderLessons();
-    renderStudents();
-    renderInstructors();
-    renderCalendar();
+  }
+
+  // Status dropdown lists the statuses present in the sheet; keeps the current choice.
+  function renderStatusFilter() {
+    const sel = $('status-filter');
+    const cur = sel.value;
+    const opts = state.model.statuses;
+    sel.innerHTML = '<option value="">All statuses</option>' +
+      opts.map((st) => '<option value="' + esc(st) + '">' + esc(st) + '</option>').join('');
+    sel.value = opts.indexOf(cur) >= 0 ? cur : '';
+    sel.hidden = !opts.length;
   }
 
   function renderKpis() {
     const m = state.model;
-    const off = m.offToday;
     const tiles = [
       { label: 'New lesson requests', value: m.newCount, sub: m.hasStatus ? 'Status is “New”' : 'No Status column found', accent: m.newCount > 0 },
-      { label: 'Requests, last 7 days', value: m.weekCount, sub: m.lessons.length + ' total on file' },
-      { label: 'Instructors off today', value: off.length, sub: off.length ? off.map((p) => p.name).join(', ') : 'Everyone is available' },
-      { label: 'Students available', value: m.students.rows.length, sub: m.students.error ? 'Sheet not connected' : 'On the availability list' }
+      { label: 'Requests, last 7 days', value: m.weekCount, sub: 'Submitted this past week' },
+      { label: 'Booked', value: m.bookedCount, sub: 'Booked, confirmed or scheduled' },
+      { label: 'Total requests', value: m.lessons.length, sub: 'On the sheet' }
     ];
     $('kpis').innerHTML = tiles.map((t) =>
       '<div class="kpi' + (t.accent ? ' kpi-accent' : '') + '"><div class="kpi-label">' + esc(t.label) +
@@ -736,15 +509,17 @@
   function renderLessons() {
     const m = state.model;
     const q = $('lessons-q').value.trim().toLowerCase();
-    const list = q ? m.lessons.filter((l) => l.hay.indexOf(q) >= 0) : m.lessons;
-    $('lessons-count').textContent = q ? list.length + ' of ' + m.lessons.length : String(m.lessons.length);
+    const st = $('status-filter').value;
+    const list = m.lessons.filter((l) => (!q || l.hay.indexOf(q) >= 0) && (!st || l.status === st));
+    const filtered = q || st;
+    $('lessons-count').textContent = filtered ? list.length + ' of ' + m.lessons.length : String(m.lessons.length);
     const box = $('lessons');
     if (m.lessonsError && !m.lessons.length) {
       box.innerHTML = '<div class="note-error">' + esc(m.lessonsError) + '</div>';
       return;
     }
     if (!list.length) {
-      box.innerHTML = '<div class="empty">' + (q ? 'No requests match “' + esc(q) + '”.' : 'No lesson requests yet.') + '</div>';
+      box.innerHTML = '<div class="empty">' + (filtered ? 'No requests match these filters.' : 'No lesson requests yet.') + '</div>';
       return;
     }
     box.innerHTML = list.map((l) => {
@@ -767,139 +542,6 @@
         (when ? '<div class="req-time">' + esc(when) + '</div>' : '') +
         '</article>';
     }).join('');
-  }
-
-  function renderStudents() {
-    const s = state.model.students;
-    const q = $('students-q').value.trim().toLowerCase();
-    const rows = q ? s.rows.filter((x) => x.hay.indexOf(q) >= 0) : s.rows;
-    $('students-count').textContent = q ? rows.length + ' of ' + s.rows.length : String(s.rows.length);
-    const box = $('students');
-    if (s.error && !s.headers.length) {
-      box.innerHTML = '<div class="note-error">' + esc(s.error) + '</div>';
-      return;
-    }
-    if (!s.headers.length) { box.innerHTML = '<div class="empty">The student sheet is empty.</div>'; return; }
-    if (!rows.length) {
-      box.innerHTML = '<div class="empty">' + (q ? 'No students match “' + esc(q) + '”.' : 'No students on the list.') + '</div>';
-      return;
-    }
-    const cell = (h, v) => {
-      if (isBlank(v)) return '<td></td>';
-      if (s.phoneCols.indexOf(h) >= 0) return '<td class="nowrap">' + phoneLink(v) + '</td>';
-      if (s.emailCols.indexOf(h) >= 0 || EMAIL_RE.test(String(v).trim())) return '<td class="nowrap">' + mailLink(v) + '</td>';
-      return '<td>' + esc(fmtValue(v)) + '</td>';
-    };
-    box.innerHTML = '<div class="table-wrap"><table><thead><tr>' +
-      s.headers.map((h) => '<th scope="col">' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' +
-      rows.map((x) => '<tr>' + s.headers.map((h) => cell(h, x.r[h])).join('') + '</tr>').join('') +
-      '</tbody></table></div>';
-  }
-
-  function renderInstructors() {
-    const m = state.model;
-    $('inst-count').textContent = String(m.instructors.length);
-    if (!m.instructors.length) {
-      $('instructors').innerHTML = '<div class="empty">Add your team to the “Instructors” tab.</div>';
-      return;
-    }
-    $('instructors').innerHTML = m.instructors.map((p) => {
-      const off = m.offToday.indexOf(p) >= 0;
-      const links = [];
-      if (p.phone) links.push(phoneLink(p.phone, true));
-      if (p.email) links.push(mailLink(p.email, true));
-      return '<div class="inst"><span class="dot" style="background:' + p.color + '"></span><div class="inst-main">' +
-        '<div class="inst-name">' + esc(p.name) + (off ? '<span class="badge-off">OFF TODAY</span>' : '') + '</div>' +
-        (links.length ? '<div class="contact">' + links.join('') + '</div>' : '') + '</div></div>';
-    }).join('');
-  }
-
-  // Overlapping entries for the same person are merged so their bars never collide.
-  function mergedTimeOff() {
-    const byPerson = new Map();
-    state.model.timeOff.forEach((t) => {
-      if (!byPerson.has(t.person)) byPerson.set(t.person, []);
-      byPerson.get(t.person).push({ person: t.person, start: t.start, end: t.end });
-    });
-    const out = [];
-    byPerson.forEach((list) => {
-      list.sort((a, b) => a.start - b.start);
-      let cur = null;
-      list.forEach((t) => {
-        if (cur && t.start <= cur.end) { if (t.end > cur.end) cur.end = t.end; }
-        else { cur = Object.assign({}, t); out.push(cur); }
-      });
-    });
-    return out;
-  }
-
-  function renderCalendar() {
-    const m = state.model;
-    const y = state.view.y, mo = state.view.m;
-    const first = new Date(y, mo, 1);
-    const last = new Date(y, mo + 1, 0);
-    const gridStart = addDays(first, -first.getDay());
-    const gridEnd = addDays(last, 6 - last.getDay());
-    const todayK = dayKey(new Date());
-    const spans = mergedTimeOff();
-
-    $('cal-title').textContent = fmt(first, { month: 'long', year: 'numeric' });
-
-    let html = '';
-    for (let ws = gridStart; ws <= gridEnd; ws = addDays(ws, 7)) {
-      const we = addDays(ws, 6);
-      const segs = spans.filter((s) => s.start <= we && s.end >= ws);
-      // One fixed lane per person for the whole week, in team order.
-      const lanePeople = [];
-      segs.forEach((s) => { if (lanePeople.indexOf(s.person) < 0) lanePeople.push(s.person); });
-      lanePeople.sort((a, b) => a.order - b.order);
-      const rows = 'var(--num-h)' + (lanePeople.length ? ' repeat(' + lanePeople.length + ', var(--lane-h))' : '') + ' minmax(6px, 1fr)';
-
-      html += '<div class="cal-week" style="grid-template-rows:' + rows + '">';
-      for (let i = 0; i < 7; i++) {
-        const d = addDays(ws, i);
-        const k = dayKey(d);
-        const cls = ['cal-day'];
-        if (d.getMonth() !== mo) cls.push('out');
-        if (k === todayK) cls.push('today');
-        if (k === state.selected) cls.push('selected');
-        html += '<button type="button" class="' + cls.join(' ') + '" style="grid-column:' + (i + 1) + '" data-day="' + k + '"' +
-          ' aria-pressed="' + (k === state.selected) + '" aria-label="' + esc(fmt(d, { weekday: 'long', month: 'long', day: 'numeric' })) + '">' +
-          '<span class="cal-num">' + d.getDate() + '</span></button>';
-      }
-      segs.forEach((s) => {
-        const a = s.start < ws ? ws : s.start;
-        const b = s.end > we ? we : s.end;
-        const c0 = diffDays(ws, a), c1 = diffDays(ws, b);
-        const cls = ['cal-bar'];
-        if (s.start < ws) cls.push('cont-l');
-        if (s.end > we) cls.push('cont-r');
-        html += '<div class="' + cls.join(' ') + '" style="grid-column:' + (c0 + 1) + ' / ' + (c1 + 2) +
-          ';grid-row:' + (lanePeople.indexOf(s.person) + 2) + ';background:' + s.person.color + ';color:' + s.person.fg + '"' +
-          ' data-start="' + dayKey(s.start) + '" data-end="' + dayKey(s.end) + '" data-person="' + esc(s.person.name) + '"' +
-          ' title="' + esc(s.person.name + ': ' + fmtRange(s.start, s.end)) + '">' + esc(s.person.name) + '</div>';
-      });
-      html += '</div>';
-    }
-    $('cal-weeks').innerHTML = html;
-
-    // Legend: the whole team, plus anyone who only appears in Time Off.
-    $('legend').innerHTML = m.people.length
-      ? m.people.map((p) => '<span><i class="dot" style="background:' + p.color + '"></i>' + esc(p.name) + '</span>').join('')
-      : '';
-    renderDetail();
-  }
-
-  function renderDetail() {
-    const d = parseDate(state.selected);
-    const items = state.model.timeOff.filter((t) => t.start <= d && t.end >= d)
-      .sort((a, b) => a.person.order - b.person.order || a.start - b.start);
-    const title = fmt(d, { weekday: 'long', month: 'long', day: 'numeric', year: d.getFullYear() !== thisYear ? 'numeric' : undefined });
-    $('cal-detail').innerHTML = '<h3>' + esc(title) + '</h3>' + (items.length
-      ? '<ul>' + items.map((t) => '<li><span class="dot" style="background:' + t.person.color + '"></span><span><strong>' +
-          esc(t.person.name) + '</strong> off ' + esc(fmtRange(t.start, t.end)) +
-          (t.notes ? ' <span class="muted">· ' + esc(t.notes) + '</span>' : '') + '</span></li>').join('') + '</ul>'
-      : '<div class="empty">Everyone is available.</div>');
   }
 
   // ---------- Data loading ----------
@@ -997,55 +639,11 @@
           { Submitted: ago(60 * 24 * 11), Status: 'Cancelled', Notes: 'Moved out of state.', Name: 'Olivia Grant', Email: 'olivia.grant@example.com', Phone: '(727) 555-0109', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(-8), 'Experience Level': 'Never kited', 'Weight (lbs)': 150, Message: '' },
           { Submitted: ago(60 * 24 * 15), Status: 'Booked', Notes: 'Recurring Tuesdays.', Name: 'Noah Fischer', Email: 'noah.f@example.com', Phone: '(727) 555-0181', 'Lesson Type': 'Coaching session', 'Preferred Date': D(-14), 'Experience Level': 'Independent rider', 'Weight (lbs)': 165, Message: 'Working on jumps.' }
         ]
-      },
-      instructors: {
-        headers: ['Name', 'Phone', 'Email', 'Color'],
-        rows: [
-          { Name: 'Marco Reyes', Phone: '(727) 555-0134', Email: 'marco@example.com', Color: '#0e7490' },
-          { Name: 'Jenna Walsh', Phone: '(727) 555-0178', Email: 'jenna@example.com', Color: '' },
-          { Name: 'Tyler Brooks', Phone: '7275550191', Email: 'tyler@example.com', Color: 'teal' },
-          { Name: 'Sofia Alvarez', Phone: '(727) 555-0155', Email: 'sofia@example.com', Color: '#db2777' },
-          { Name: 'Dev Patel', Phone: '(813) 555-0142', Email: 'dev@example.com', Color: '' }
-        ]
-      },
-      timeOff: {
-        headers: ['Instructor', 'Start Date', 'End Date', 'Notes'],
-        rows: [
-          { Instructor: 'Marco Reyes', 'Start Date': D(-1), 'End Date': D(1), Notes: 'Family visit' },
-          { Instructor: 'Sofia Alvarez', 'Start Date': D(0), 'End Date': '', Notes: 'Dentist' },
-          { Instructor: 'Jenna Walsh', 'Start Date': D(4), 'End Date': D(11), Notes: 'Cabarete trip' },
-          { Instructor: 'Kai Hoffman', 'Start Date': D(-6), 'End Date': D(-4), Notes: 'Seasonal, weekends only' },
-          { Instructor: 'Dev Patel', 'Start Date': D(8), 'End Date': D(10), Notes: 'IKO recertification' },
-          { Instructor: 'Marco Reyes', 'Start Date': D(15), 'End Date': D(16), Notes: '' },
-          { Instructor: 'Tyler Brooks', 'Start Date': D(19), 'End Date': D(29), Notes: 'Off-season break' }
-        ]
-      },
-      students: {
-        headers: ['Student', 'Phone', 'Email', 'Available Days', 'Time Window', 'Level', 'Notes'],
-        rows: [
-          { Student: 'Hannah Kowalski', Phone: '(727) 555-0148', Email: 'hannah.k@example.com', 'Available Days': 'Sat, Sun', 'Time Window': 'Mornings', Level: 'Beginner', Notes: 'With partner' },
-          { Student: 'Luis Ortega', Phone: '8135550172', Email: 'luis.ortega@example.com', 'Available Days': 'Fri to Sun', 'Time Window': 'Any', Level: 'Beginner', Notes: '' },
-          { Student: 'Priya Raman', Phone: '(727) 555-0113', Email: 'priya.r@example.com', 'Available Days': 'Tue, Thu', 'Time Window': 'After 3 PM', Level: 'Body drag', Notes: 'Prefers Sofia' },
-          { Student: 'Amelia Chen', Phone: '(727) 555-0127', Email: 'amelia.chen@example.com', 'Available Days': 'Weekdays', 'Time Window': 'Mornings', Level: 'Foil', Notes: 'Has own gear' },
-          { Student: 'Ben Okafor', Phone: '(813) 555-0103', Email: 'ben.okafor@example.com', 'Available Days': 'Mon, Wed', 'Time Window': '10 AM to 2 PM', Level: 'Water start', Notes: '' },
-          { Student: 'Grace Lindqvist', Phone: '(727) 555-0186', Email: 'grace.l@example.com', 'Available Days': 'Any', 'Time Window': 'Afternoons', Level: 'Upwind', Notes: 'Until end of month' }
-        ]
       }
     };
   }
 
   // ---------- Events ----------
-  function goToToday() {
-    const t = new Date();
-    state.view = { y: t.getFullYear(), m: t.getMonth() };
-    state.selected = dayKey(t);
-  }
-  function shiftMonth(n) {
-    const d = new Date(state.view.y, state.view.m + n, 1);
-    state.view = { y: d.getFullYear(), m: d.getMonth() };
-    renderCalendar();
-  }
-
   $('gate-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const key = $('gate-key').value.trim();
@@ -1063,24 +661,14 @@
     keyStore.clear();
     showError('');
     $('lessons-q').value = '';
-    $('students-q').value = '';
-    ['kpis', 'lessons', 'students', 'instructors', 'cal-weeks', 'cal-detail', 'legend'].forEach((id) => { $(id).innerHTML = ''; });
+    $('status-filter').value = '';
+    ['kpis', 'lessons'].forEach((id) => { $(id).innerHTML = ''; });
     showGate();
   });
   $('lessons-q').addEventListener('input', () => state.model && renderLessons());
-  $('students-q').addEventListener('input', () => state.model && renderStudents());
-  $('cal-prev').addEventListener('click', () => shiftMonth(-1));
-  $('cal-next').addEventListener('click', () => shiftMonth(1));
-  $('cal-today').addEventListener('click', () => { goToToday(); renderCalendar(); });
-  $('cal-weeks').addEventListener('click', (e) => {
-    const btn = e.target.closest('.cal-day');
-    if (!btn) return;
-    state.selected = btn.dataset.day;
-    renderCalendar();
-  });
+  $('status-filter').addEventListener('change', () => state.model && renderLessons());
 
   // ---------- Start ----------
-  goToToday();
   if (DEMO) {
     $('demo-banner').hidden = false;
     $('lock-btn').hidden = true; // nothing to lock in demo mode
