@@ -28,6 +28,13 @@
     --warn: #b45309;   --warn-soft: #fef3c7;
     --danger: #b91c1c; --danger-soft: #fee2e2;
     --neutral: #475569; --neutral-soft: #e9edf2;
+    /* Instructor colors */
+    --green: #15803d;  --green-soft: #dcfce7;
+    --blue: #1d4ed8;   --blue-soft: #dbeafe;
+    --purple: #7e22ce; --purple-soft: #f3e8ff;
+    --orange: #c2410c; --orange-soft: #ffedd5;
+    --pink: #be185d;   --pink-soft: #fce7f3;
+    --teal: #0f766e;   --teal-soft: #ccfbf1;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -47,6 +54,12 @@
       --warn: #fcd34d;   --warn-soft: rgba(245, 158, 11, .16);
       --danger: #fca5a5; --danger-soft: rgba(239, 68, 68, .16);
       --neutral: #cbd5e1; --neutral-soft: rgba(148, 163, 184, .16);
+      --green: #86efac;  --green-soft: rgba(34, 197, 94, .18);
+      --blue: #93c5fd;   --blue-soft: rgba(59, 130, 246, .2);
+      --purple: #d8b4fe; --purple-soft: rgba(168, 85, 247, .2);
+      --orange: #fdba74; --orange-soft: rgba(249, 115, 22, .18);
+      --pink: #f9a8d4;   --pink-soft: rgba(236, 72, 153, .18);
+      --teal: #5eead4;   --teal-soft: rgba(20, 184, 166, .18);
     }
   }
 
@@ -219,10 +232,38 @@
   .chip.ok { background: var(--ok-soft); color: var(--ok); }
   .chip.warn { background: var(--warn-soft); color: var(--warn); }
   .chip.danger { background: var(--danger-soft); color: var(--danger); text-decoration: line-through; }
-  .chip.avail { background: var(--accent-soft); color: var(--accent); padding: 2px 6px; line-height: 15px; }
-  .chip.avail span { display: block; overflow: hidden; text-overflow: ellipsis; }
-  .chip.avail .chip-phone { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .chip.avail { background: var(--accent-soft); color: var(--accent); }
+  .chip.weekly { padding: 2px 6px; line-height: 15px; }
+  .chip.weekly span { display: block; overflow: hidden; text-overflow: ellipsis; }
+  .chip.weekly .chip-phone { font-weight: 500; font-variant-numeric: tabular-nums; }
   .chip-more { font-size: 11.5px; color: var(--muted); font-weight: 500; padding: 0 6px; }
+
+  /* Instructor colors: .ic sets --ic / --ic-soft, .ic-<color> picks them */
+  .ic { --ic: var(--neutral); --ic-soft: var(--neutral-soft); }
+  .ic-green { --ic: var(--green); --ic-soft: var(--green-soft); }
+  .ic-blue { --ic: var(--blue); --ic-soft: var(--blue-soft); }
+  .ic-purple { --ic: var(--purple); --ic-soft: var(--purple-soft); }
+  .ic-orange { --ic: var(--orange); --ic-soft: var(--orange-soft); }
+  .ic-pink { --ic: var(--pink); --ic-soft: var(--pink-soft); }
+  .ic-teal { --ic: var(--teal); --ic-soft: var(--teal-soft); }
+  .chip.ic { background: var(--ic-soft); color: var(--ic); }
+  .chip.ic.danger { opacity: .7; }
+  .dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 999px; background: var(--ic); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 0 18px 12px; color: var(--muted); font-size: 13px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .inst { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+  .req.ic { border-left: 4px solid var(--ic); }
+
+  /* Student availability */
+  .avail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .avail-col { border: 1px solid var(--border); border-radius: 12px; min-width: 0; }
+  .avail-col h3 { margin: 0; padding: 12px 14px; font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--border); background: var(--surface-2); border-radius: 12px 12px 0 0; }
+  .avail-col ul { list-style: none; margin: 0; padding: 4px 0; }
+  .avail-col li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 14px; border-left: 4px solid var(--ic); margin: 4px 0; overflow-wrap: anywhere; }
+  .avail-col li strong { font-weight: 600; }
+  .avail-col .muted { color: var(--muted); font-size: 13px; }
+  .avail-col .contact { margin-top: 2px; font-size: 13px; }
+  .avail-col .empty { padding: 16px 14px; text-align: left; }
   .detail { padding: 16px 0 0; }
   .detail h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
   .detail ul { list-style: none; margin: 0; padding: 0; }
@@ -266,8 +307,11 @@
     .chip.danger { background: var(--danger); opacity: .5; }
     .chip:not(.info):not(.ok):not(.warn):not(.danger):not(.avail) { background: var(--neutral); }
     .chip.avail { background: var(--accent); padding: 0; line-height: 0; }
-    .chip.avail span { display: none; }
+    .chip.weekly span { display: none; }
     .chip-more { font-size: 10px; padding: 0; line-height: 1; }
+    .chip.ic { background: var(--ic); padding: 0; line-height: 0; }
+    .legend { padding: 0 14px 10px; }
+    .avail-grid { grid-template-columns: minmax(0, 1fr); }
     .detail .when { width: 78px; }
     .brand h1 { font-size: 17px; }
     .actions { width: 100%; }
@@ -343,6 +387,7 @@
       </div>
     </div>
     <div class="cal-note" id="cal-note"></div>
+    <div class="legend" id="cal-legend" hidden></div>
     <div class="panel-body">
       <div class="cal">
         <div class="cal-dow" aria-hidden="true">
@@ -358,6 +403,13 @@
       </div>
       <div class="detail" id="cal-detail" aria-live="polite"></div>
     </div>
+  </section>
+
+  <section class="panel" aria-labelledby="avail-h" id="avail-panel" hidden>
+    <div class="panel-head"><h2 id="avail-h">Student availability<span class="count" id="avail-count"></span></h2></div>
+    <div class="cal-note" id="avail-note"></div>
+    <div class="legend" id="avail-legend" hidden></div>
+    <div class="panel-body"><div class="avail-grid" id="avail-groups"></div></div>
   </section>
 
   <section class="panel" aria-labelledby="lessons-h">
@@ -381,6 +433,12 @@
 
   // Paste the Apps Script web app URL here (it ends in /exec).
   const API_URL = 'https://script.google.com/macros/s/AKfycbxNeYvWP2KLU87YefQ8ZaTlT-Hw2MQ_s9PDlbGab4CHATvuPpInMYP46A1dcpsrS7k/exec';
+
+  // Instructor colors, by first name (lower case). Instructors not listed
+  // here get the next free color automatically.
+  // Choices: green, blue, purple, orange, pink, teal.
+  const INSTRUCTOR_COLORS = { brad: 'green', anthony: 'blue' };
+  const IC_PALETTE = ['green', 'blue', 'purple', 'orange', 'pink', 'teal'];
 
   const KEY_STORAGE = 'ksp-dashboard-key';
   const DAY_MS = 864e5;
@@ -533,6 +591,7 @@
     lc.submitted = take([/^submitted\b/, /^(timestamp|date submitted|submission date|submitted at|created)$/, /\bsubmitted\b/]);
     lc.status = take([/^status$/, /\bstatus\b/]);
     lc.notes = take([/^notes?$/, /^(internal|staff|admin|team) notes?$/]);
+    lc.instructor = take([/^instructor$/, /\b(instructor|coach|teacher|assigned to)\b/]);
     lc.name = take([/^(full )?name$/, /^(your|student|client|customer|rider) name$/, /^(?!.*\b(first|last)\b).*\bname\b/]);
     lc.first = lc.name ? null : take([/\bfirst\b.*\bname\b|^first$/]);
     lc.last = lc.name ? null : take([/\blast\b.*\bname\b|^last$|\bsurname\b/]);
@@ -575,6 +634,7 @@
         altDate: lc.altDate ? r[lc.altDate] : '',
         time: lc.time ? r[lc.time] : '',
         avail: lc.avail && !isBlank(r[lc.avail]) ? String(r[lc.avail]).trim() : '',
+        instructor: lc.instructor && !isBlank(r[lc.instructor]) ? String(r[lc.instructor]).trim() : '',
         hay: lh.map((h) => r[h]).concat(fields.map((f) => f[1])).join(' \u0001 ').toLowerCase()
       };
     });
@@ -604,16 +664,49 @@
       put(l, l.altDate, true);
       const text = [l.avail, dated ? '' : l.date].filter((x) => !isBlank(x) && !parseDate(x)).join(', ');
       const dows = parseWeekdays(text);
+      l.availText = text;
+      l.dows = dows;
       if (dows.size && isOpen(l.status)) {
         const t = lessonTime('', l.time);
-        dows.forEach((i) => weekly[i].push({ lesson: l, weekly: true, text, mins: t.mins, label: t.label, exact: !!t.exact }));
+        dows.forEach((i) => weekly[i].push({ lesson: l, weekly: true, text, span: dows.size, mins: t.mins, label: t.label, exact: !!t.exact }));
       } else if (!dated && !dows.size) {
         undated++;
       }
     });
     const byTime = (a, b) => a.mins - b.mins || a.lesson.name.localeCompare(b.lesson.name);
     Object.keys(days).forEach((k) => days[k].sort((a, b) => a.alt - b.alt || byTime(a, b)));
-    weekly.forEach((list) => list.sort(byTime));
+    // Specific days first; "Flexible" people last so they don't crowd others out.
+    weekly.forEach((list) => list.sort((a, b) => a.span - b.span || byTime(a, b)));
+
+    // Student availability groups. Someone free on, say, Monday and Saturday
+    // is listed under both Weekdays and Weekends.
+    const groups = { flexible: [], weekends: [], weekdays: [] };
+    let noAvail = 0;
+    lessons.filter((l) => isOpen(l.status)).forEach((l) => {
+      const d = l.dows;
+      if (!d.size) { noAvail++; return; }
+      if (d.size === 7) { groups.flexible.push(l); return; }
+      if (d.has(0) || d.has(6)) groups.weekends.push(l);
+      if ([1, 2, 3, 4, 5].some((i) => d.has(i))) groups.weekdays.push(l);
+    });
+    Object.keys(groups).forEach((g) => groups[g].sort((a, b) => a.name.localeCompare(b.name)));
+
+    // Instructor colors: the fixed ones first, then free colors in name order.
+    const instructors = {};
+    const instNames = Array.from(new Set(lessons.map((l) => l.instructor).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b));
+    const taken = new Set();
+    instNames.forEach((n) => {
+      const c = INSTRUCTOR_COLORS[instKey(n)];
+      if (c) { instructors[instKey(n)] = { name: n, color: c }; taken.add(c); }
+    });
+    instNames.forEach((n) => {
+      const k = instKey(n);
+      if (instructors[k]) return;
+      const c = IC_PALETTE.find((x) => !taken.has(x)) || IC_PALETTE[Object.keys(instructors).length % IC_PALETTE.length];
+      taken.add(c);
+      instructors[k] = { name: n, color: c };
+    });
 
     const weekAgo = now.getTime() - 7 * DAY_MS;
     return {
@@ -621,6 +714,10 @@
       weekly,
       undated,
       availCol: lc.avail,
+      instCol: lc.instructor,
+      instructors,
+      groups,
+      noAvail,
       dateCol: lc.date,
       timeCol: lc.time,
       updated: parseDate(data.updated),
@@ -683,6 +780,22 @@
     s.replace(DOW_ONE_RE, (_, a) => { out.add(dowNum(a)); return ' '; });
     return out;
   }
+  const instKey = (n) => String(n).trim().split(/\s+/)[0].toLowerCase();
+  // Class list that colors something by the lesson's instructor.
+  function icClass(l) {
+    const i = l.instructor && state.model.instructors[instKey(l.instructor)];
+    return 'ic' + (i ? ' ic-' + i.color : '');
+  }
+  function instLabel(l) {
+    return l.instructor ? '<span class="inst ' + icClass(l) + '"><i class="dot"></i>' + esc(l.instructor) + '</span>' : '';
+  }
+  function legendHtml() {
+    const m = state.model;
+    const list = Object.keys(m.instructors).map((k) => m.instructors[k]).sort((a, b) => a.name.localeCompare(b.name));
+    return list.map((i) => '<span class="ic ic-' + i.color + '"><i class="dot"></i>' + esc(i.name) + '</span>').join('') +
+      '<span class="ic"><i class="dot"></i>No instructor yet</span>';
+  }
+
   // Cancelled and finished requests don't need a slot any more.
   const isOpen = (status) => statusTone(status) !== 'danger' && !/complet|done|finish/i.test(status);
 
@@ -693,6 +806,7 @@
     $('updated').textContent = m.updated ? 'Updated ' + fmtDay(m.updated) + ', ' + fmtTime(m.updated) : '';
     renderKpis();
     renderCalendar();
+    renderAvailability();
     renderStatusFilter();
     renderLessons();
   }
@@ -747,9 +861,10 @@
         const rel = relTime(l.submitted);
         when = 'Submitted ' + fmtDay(l.submitted) + ' · ' + fmtTime(l.submitted) + (rel ? ' · ' + rel : '');
       }
-      return '<article class="req">' +
+      return '<article class="req' + (m.instCol ? ' ' + icClass(l) : '') + '">' +
         '<div class="req-top"><h3>' + esc(l.name || 'Unnamed request') + '</h3>' +
         (l.status ? '<span class="pill ' + tone + '">' + esc(l.status) + '</span>' : '') + '</div>' +
+        (l.instructor ? '<div>' + instLabel(l) + '</div>' : '') +
         (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') +
         (l.fields.length ? '<ul class="fields">' + l.fields.map((f) =>
           '<li><span class="lbl">' + esc(f[0]) + ':</span> ' + esc(f[1]) + '</li>').join('') + '</ul>' : '') +
@@ -779,6 +894,38 @@
     renderCalendar();
   }
 
+  // ---------- Student availability ----------
+  function renderAvailability() {
+    const m = state.model;
+    const show = !!m.availCol;
+    $('avail-panel').hidden = !show;
+    if (!show) return;
+    const cols = [['flexible', 'Flexible'], ['weekends', 'Weekends'], ['weekdays', 'Weekdays']];
+    const people = new Set(cols.reduce((all, c) => all.concat(m.groups[c[0]]), []));
+    $('avail-count').textContent = String(people.size);
+    let note = 'Open requests grouped by their “' + m.availCol + '”. Someone free on both a weekday and a weekend day is in both lists.';
+    if (m.noAvail) note += ' ' + m.noAvail + (m.noAvail === 1 ? ' student has' : ' students have') + ' no availability the dashboard can read.';
+    $('avail-note').textContent = note;
+    $('avail-legend').innerHTML = m.instCol ? legendHtml() : '';
+    $('avail-legend').hidden = !m.instCol;
+    $('avail-groups').innerHTML = cols.map((c) => {
+      const list = m.groups[c[0]];
+      return '<div class="avail-col"><h3>' + esc(c[1]) + '<span class="count">' + list.length + '</span></h3>' + (list.length
+        ? '<ul>' + list.map((l) => {
+            const contact = [];
+            if (l.phone) contact.push(phoneLink(l.phone, true));
+            if (l.email) contact.push(mailLink(l.email, true));
+            const sub = [c[0] === 'flexible' ? '' : l.availText, l.instructor ? 'Instructor: ' + l.instructor : 'No instructor yet']
+              .filter(Boolean).join(' · ');
+            return '<li class="' + icClass(l) + '"><div><strong>' + esc(l.name || 'Unnamed request') + '</strong>' +
+              (l.status ? ' <span class="pill ' + statusTone(l.status) + '">' + esc(l.status) + '</span>' : '') +
+              '<div class="muted">' + esc(sub) + '</div>' +
+              (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') + '</div></li>';
+          }).join('') + '</ul>'
+        : '<div class="empty">Nobody yet.</div>') + '</div>';
+    }).join('');
+  }
+
   // Requests dated for this day, then (today onward) people available on its weekday.
   function dayItems(d) {
     const m = state.model;
@@ -790,9 +937,14 @@
   }
 
   function chipHtml(e) {
-    if (!e.weekly) return '<span class="chip ' + statusTone(e.lesson.status) + '">' + esc(chipText(e)) + '</span>';
     const l = e.lesson;
-    return '<span class="chip avail"><span>' + esc((e.exact ? fmtShortTime(e.mins) + ' ' : '') + (l.name || 'Unnamed')) + '</span>' +
+    const byInst = !!state.model.instCol;
+    if (!e.weekly) {
+      const tone = statusTone(l.status);
+      const cls = byInst ? icClass(l) + (tone === 'danger' ? ' danger' : '') : tone;
+      return '<span class="chip ' + cls + '">' + esc(chipText(e)) + '</span>';
+    }
+    return '<span class="chip weekly ' + (byInst ? icClass(l) : 'avail') + '"><span>' + esc((e.exact ? fmtShortTime(e.mins) + ' ' : '') + (l.name || 'Unnamed')) + '</span>' +
       (l.phone ? '<span class="chip-phone">' + esc(fmtPhone(l.phone)) + '</span>' : '') + '</span>';
   }
 
@@ -839,7 +991,8 @@
 
     const parts = [];
     if (m.dateCol) parts.push('Requests sit on their “' + m.dateCol + '”' + (m.timeCol ? ' at their “' + m.timeCol + '”' : '') + '.');
-    if (m.availCol) parts.push('Teal entries show who is available that weekday, from their “' + m.availCol + '”.');
+    if (m.availCol) parts.push((m.instCol ? 'Entries showing a phone number' : 'Teal entries') + ' are people available on that weekday, from their “' + m.availCol + '”.');
+    if (m.instCol) parts.push('Colors show each student’s instructor.');
     let note = '';
     if (parts.length) {
       note = parts.join(' ') + ' Tap a day to see names and numbers.';
@@ -849,6 +1002,8 @@
     }
     $('cal-note').textContent = note;
     $('cal-note').hidden = !note;
+    $('cal-legend').innerHTML = m.instCol ? legendHtml() : '';
+    $('cal-legend').hidden = !m.instCol;
     renderDetail();
   }
 
@@ -866,6 +1021,7 @@
           return '<li><span class="when">' + esc(e.label || (e.weekly ? 'Available' : 'Any time')) + '</span><span class="who"><strong>' +
             esc(l.name || 'Unnamed request') + '</strong>' +
             (l.status ? ' <span class="pill ' + statusTone(l.status) + '">' + esc(l.status) + '</span>' : '') +
+            (l.instructor ? '<div>' + instLabel(l) + '</div>' : '') +
             (sub ? '<div class="muted">' + esc(sub) + '</div>' : '') +
             (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') +
             '</span></li>';
@@ -957,18 +1113,18 @@
       ok: true,
       updated: at(0, now.getHours(), now.getMinutes()),
       lessons: {
-        headers: ['Submitted', 'Status', 'Notes', 'Name', 'Email', 'Phone', 'Lesson Type', 'Preferred Date', 'Preferred Time', 'Availability', 'Experience Level', 'Weight (lbs)', 'Message'],
+        headers: ['Submitted', 'Status', 'Notes', 'Name', 'Email', 'Phone', 'Lesson Type', 'Preferred Date', 'Preferred Time', 'Availability', 'Instructor', 'Experience Level', 'Weight (lbs)', 'Message'],
         rows: [
-          { Submitted: ago(42), Status: 'New', Notes: '', Name: 'Hannah Kowalski', Email: 'hannah.k@example.com', Phone: '(727) 555-0148', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(3), 'Preferred Time': '9:00 AM', Availability: '', 'Experience Level': 'Never kited', 'Weight (lbs)': 140, Message: 'Birthday present for my husband. Can we do it together?' },
-          { Submitted: ago(60 * 5 + 12), Status: 'New', Notes: '', Name: 'Luis Ortega', Email: 'luis.ortega@example.com', Phone: '8135550172', 'Lesson Type': 'Private package (6 hrs)', 'Preferred Date': D(5), 'Preferred Time': 'Afternoon', Availability: 'Weekends', 'Experience Level': 'Some trainer kite', 'Weight (lbs)': 185, Message: 'Weekends work best.' },
-          { Submitted: ago(60 * 26), Status: 'Contacted', Notes: 'Left voicemail, texting tomorrow.', Name: 'Priya Raman', Email: 'priya.r@example.com', Phone: '(727) 555-0113', 'Lesson Type': 'Water start clinic', 'Preferred Date': D(2), 'Preferred Time': '10:30 AM', Availability: 'Monday, Wednesday', 'Experience Level': 'Body dragging', 'Weight (lbs)': 128, Message: '' },
-          { Submitted: ago(60 * 50), Status: 'Booked', Notes: 'Booked with Marco, Fort De Soto, 9am.', Name: 'Jake Thornton', Email: 'jthornton@example.com', Phone: '(941) 555-0190', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(1), 'Preferred Time': '9:00 AM', Availability: '', 'Experience Level': 'Never kited', 'Weight (lbs)': 200, Message: 'Coming from Tampa.' },
-          { Submitted: ago(60 * 60 * 2), Status: 'New', Notes: '', Name: 'Sofia Martins', Email: 'sofia.m@example.com', Phone: '(727) 555-0135', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(1), 'Preferred Time': '1:00 PM', Availability: 'Mon-Fri', 'Experience Level': 'Never kited', 'Weight (lbs)': 130, Message: 'Any day this week.' },
-          { Submitted: ago(60 * 30), Status: 'New', Notes: '', Name: 'Derek Osei', Email: 'derek.osei@example.com', Phone: '7275550193', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': '', 'Preferred Time': 'Morning', Availability: 'Monday', 'Experience Level': 'Never kited', 'Weight (lbs)': 190, Message: 'Off every Monday.' },
-          { Submitted: ago(60 * 24 * 4 + 90), Status: 'New', Notes: '', Name: 'Amelia Chen', Email: 'amelia.chen@example.com', Phone: '(727) 555-0127', 'Lesson Type': 'Foil lesson', 'Preferred Date': D(9), 'Preferred Time': '2:00 PM', Availability: 'Tuesdays', 'Experience Level': 'Independent rider', 'Weight (lbs)': 135, Message: 'Own board, need foil rental.' },
-          { Submitted: ago(60 * 24 * 6), Status: 'Completed', Notes: 'Great progress. Ready for upwind.', Name: 'Marcus Bell', Email: 'marcus.bell@example.com', Phone: '(813) 555-0166', 'Lesson Type': 'Private package (6 hrs)', 'Preferred Date': D(-3), 'Preferred Time': 'Morning', Availability: 'Monday', 'Experience Level': 'Body dragging', 'Weight (lbs)': 172, Message: '' },
-          { Submitted: ago(60 * 24 * 11), Status: 'Cancelled', Notes: 'Moved out of state.', Name: 'Olivia Grant', Email: 'olivia.grant@example.com', Phone: '(727) 555-0109', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(-8), 'Preferred Time': '', Availability: 'Any day', 'Experience Level': 'Never kited', 'Weight (lbs)': 150, Message: '' },
-          { Submitted: ago(60 * 24 * 15), Status: 'Booked', Notes: 'Recurring Tuesdays.', Name: 'Noah Fischer', Email: 'noah.f@example.com', Phone: '(727) 555-0181', 'Lesson Type': 'Coaching session', 'Preferred Date': D(-14), 'Preferred Time': '5:00 PM', Availability: 'Tuesday', 'Experience Level': 'Independent rider', 'Weight (lbs)': 165, Message: 'Working on jumps.' }
+          { Submitted: ago(42), Status: 'New', Notes: '', Name: 'Hannah Kowalski', Email: 'hannah.k@example.com', Phone: '(727) 555-0148', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(3), 'Preferred Time': '9:00 AM', Availability: 'Flexible', Instructor: '', 'Experience Level': 'Never kited', 'Weight (lbs)': 140, Message: 'Birthday present for my husband. Can we do it together?' },
+          { Submitted: ago(60 * 5 + 12), Status: 'New', Notes: '', Name: 'Luis Ortega', Email: 'luis.ortega@example.com', Phone: '8135550172', 'Lesson Type': 'Private package (6 hrs)', 'Preferred Date': D(5), 'Preferred Time': 'Afternoon', Availability: 'Weekends', Instructor: 'Brad', 'Experience Level': 'Some trainer kite', 'Weight (lbs)': 185, Message: 'Weekends work best.' },
+          { Submitted: ago(60 * 26), Status: 'Contacted', Notes: 'Left voicemail, texting tomorrow.', Name: 'Priya Raman', Email: 'priya.r@example.com', Phone: '(727) 555-0113', 'Lesson Type': 'Water start clinic', 'Preferred Date': D(2), 'Preferred Time': '10:30 AM', Availability: 'Monday, Wednesday', Instructor: 'Anthony', 'Experience Level': 'Body dragging', 'Weight (lbs)': 128, Message: '' },
+          { Submitted: ago(60 * 50), Status: 'Booked', Notes: 'Fort De Soto, 9am.', Name: 'Jake Thornton', Email: 'jthornton@example.com', Phone: '(941) 555-0190', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(1), 'Preferred Time': '9:00 AM', Availability: 'Weekends', Instructor: 'Brad', 'Experience Level': 'Never kited', 'Weight (lbs)': 200, Message: 'Coming from Tampa.' },
+          { Submitted: ago(60 * 60 * 2), Status: 'New', Notes: '', Name: 'Sofia Martins', Email: 'sofia.m@example.com', Phone: '(727) 555-0135', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(1), 'Preferred Time': '1:00 PM', Availability: 'Weekdays', Instructor: 'Anthony', 'Experience Level': 'Never kited', 'Weight (lbs)': 130, Message: 'Any day this week.' },
+          { Submitted: ago(60 * 30), Status: 'New', Notes: '', Name: 'Derek Osei', Email: 'derek.osei@example.com', Phone: '7275550193', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': '', 'Preferred Time': 'Morning', Availability: 'Monday', Instructor: '', 'Experience Level': 'Never kited', 'Weight (lbs)': 190, Message: 'Off every Monday.' },
+          { Submitted: ago(60 * 24 * 4 + 90), Status: 'New', Notes: '', Name: 'Amelia Chen', Email: 'amelia.chen@example.com', Phone: '(727) 555-0127', 'Lesson Type': 'Foil lesson', 'Preferred Date': D(9), 'Preferred Time': '2:00 PM', Availability: 'Flexible', Instructor: 'Brad', 'Experience Level': 'Independent rider', 'Weight (lbs)': 135, Message: 'Own board, need foil rental.' },
+          { Submitted: ago(60 * 24 * 6), Status: 'Completed', Notes: 'Great progress. Ready for upwind.', Name: 'Marcus Bell', Email: 'marcus.bell@example.com', Phone: '(813) 555-0166', 'Lesson Type': 'Private package (6 hrs)', 'Preferred Date': D(-3), 'Preferred Time': 'Morning', Availability: 'Monday', Instructor: 'Anthony', 'Experience Level': 'Body dragging', 'Weight (lbs)': 172, Message: '' },
+          { Submitted: ago(60 * 24 * 11), Status: 'Cancelled', Notes: 'Moved out of state.', Name: 'Olivia Grant', Email: 'olivia.grant@example.com', Phone: '(727) 555-0109', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(-8), 'Preferred Time': '', Availability: 'Any day', Instructor: '', 'Experience Level': 'Never kited', 'Weight (lbs)': 150, Message: '' },
+          { Submitted: ago(60 * 24 * 15), Status: 'Booked', Notes: 'Recurring Tuesdays.', Name: 'Noah Fischer', Email: 'noah.f@example.com', Phone: '(727) 555-0181', 'Lesson Type': 'Coaching session', 'Preferred Date': D(-14), 'Preferred Time': '5:00 PM', Availability: 'Tuesday', Instructor: 'Anthony', 'Experience Level': 'Independent rider', 'Weight (lbs)': 165, Message: 'Working on jumps.' }
         ]
       }
     };
@@ -994,7 +1150,7 @@
     $('lessons-q').value = '';
     $('status-filter').value = '';
     state.view = null;
-    ['kpis', 'lessons', 'cal-grid', 'cal-detail'].forEach((id) => { $(id).innerHTML = ''; });
+    ['kpis', 'lessons', 'cal-grid', 'cal-detail', 'avail-groups'].forEach((id) => { $(id).innerHTML = ''; });
     showGate();
   });
   $('cal-prev').addEventListener('click', () => state.model && shiftMonth(-1));
