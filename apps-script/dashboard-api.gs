@@ -37,7 +37,7 @@ DASH_TAB_HEADERS[DASH_TIMEOFF_TAB] = ['Instructor', 'Start Date', 'End Date', 'N
 
 function doGet(e) {
   try {
-    if (!DASHBOARD_KEY || DASHBOARD_KEY === 'connect') {
+    if (!DASHBOARD_KEY || DASHBOARD_KEY === 'CHANGE-ME') {
       return dashJson_({ ok: false, error: 'DASHBOARD_KEY is not set in dashboard-api.gs' });
     }
     const key = (e && e.parameter && e.parameter.key) || '';
