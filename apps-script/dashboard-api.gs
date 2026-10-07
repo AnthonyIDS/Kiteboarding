@@ -1,9 +1,11 @@
 /**
  * Kiteboarding St. Petersburg: team dashboard API (dashboard-api.gs)
  *
- * Add this as a SECOND file in the Apps Script project bound to the lesson
- * spreadsheet. It adds doGet() only. The existing doPost() that receives
- * Ninja Forms submissions stays as it is.
+ * Add this to the Apps Script project of a spreadsheet (Extensions → Apps
+ * Script). That spreadsheet holds the Instructors and Time Off tabs. Lesson
+ * requests and student availability can live in other spreadsheets; set
+ * their IDs below. The script only reads them, so the doPost() that receives
+ * Ninja Forms submissions is never touched.
  *
  * Apps Script files share one global scope. Apart from doGet,
  * setupDashboardTabs and the three settings below, every global here starts
@@ -16,8 +18,14 @@
 
 // ---- Settings --------------------------------------------------------------
 
-/** Shared team access key. Change it, and rotate it when someone leaves. */
-const DASHBOARD_KEY = 'CHANGE-ME';
+/** Shared team access key. Set it, and rotate it when someone leaves. */
+const DASHBOARD_KEY = '';
+
+/**
+ * ID of the spreadsheet with the "Lesson Requests" tab (the long ID in its
+ * URL, between /d/ and /edit). Leave blank if that tab is in this spreadsheet.
+ */
+const LESSON_SHEET_ID = '';
 
 /** ID of the student availability spreadsheet (the long ID in its URL). */
 const STUDENT_SHEET_ID = '';
@@ -37,7 +45,7 @@ DASH_TAB_HEADERS[DASH_TIMEOFF_TAB] = ['Instructor', 'Start Date', 'End Date', 'N
 
 function doGet(e) {
   try {
-    if (!DASHBOARD_KEY || DASHBOARD_KEY === 'CHANGE-ME') {
+    if (!String(DASHBOARD_KEY).trim()) {
       return dashJson_({ ok: false, error: 'DASHBOARD_KEY is not set in dashboard-api.gs' });
     }
     const key = (e && e.parameter && e.parameter.key) || '';
@@ -53,7 +61,7 @@ function doGet(e) {
     return dashJson_({
       ok: true,
       updated: Utilities.formatDate(new Date(), tz, "yyyy-MM-dd'T'HH:mm:ss"),
-      lessons: dashReadSheet_(ss.getSheetByName(DASH_LESSONS_TAB), tz),
+      lessons: dashReadLessons_(ss),
       instructors: dashReadSheet_(instructorsSheet, tz),
       timeOff: dashReadSheet_(timeOffSheet, tz),
       students: dashReadStudents_()
@@ -65,8 +73,9 @@ function doGet(e) {
 
 /**
  * Run once from the editor (select it in the toolbar, then Run). Creates the
- * Instructors and Time Off tabs if they're missing, and confirms the student
- * spreadsheet can be opened. The first run asks you to authorize access.
+ * Instructors and Time Off tabs if they're missing, and confirms the lesson
+ * and student spreadsheets can be opened. The first run asks you to
+ * authorize access.
  */
 function setupDashboardTabs() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -75,13 +84,13 @@ function setupDashboardTabs() {
     dashEnsureTab_(ss, name);
   });
 
-  const lessons = dashReadSheet_(ss.getSheetByName(DASH_LESSONS_TAB), tz);
+  const lessons = dashReadLessons_(ss);
   const students = dashReadStudents_();
-  Logger.log('Lesson Requests: %s rows', lessons.rows.length);
+  Logger.log('Lesson Requests: %s', lessons.error ? 'ERROR: ' + lessons.error : lessons.rows.length + ' rows');
   Logger.log('Instructors: %s rows', dashReadSheet_(ss.getSheetByName(DASH_INSTRUCTORS_TAB), tz).rows.length);
   Logger.log('Time Off: %s rows', dashReadSheet_(ss.getSheetByName(DASH_TIMEOFF_TAB), tz).rows.length);
   Logger.log('Students: %s', students.error ? 'ERROR: ' + students.error : students.rows.length + ' rows');
-  if (DASHBOARD_KEY === 'CHANGE-ME') Logger.log('Reminder: set DASHBOARD_KEY before deploying.');
+  if (!String(DASHBOARD_KEY).trim()) Logger.log('Reminder: set DASHBOARD_KEY before deploying.');
 }
 
 /** Returns the named tab, creating it with bold, frozen headers if needed. */
@@ -159,6 +168,20 @@ function dashCell_(value, displayValue, tz) {
   }
   if (typeof value === 'string') return value.trim();
   return value;
+}
+
+function dashReadLessons_(activeSs) {
+  try {
+    const ss = LESSON_SHEET_ID ? SpreadsheetApp.openById(LESSON_SHEET_ID) : activeSs;
+    const sheet = ss.getSheetByName(DASH_LESSONS_TAB);
+    if (!sheet) {
+      return { headers: [], rows: [], error: 'No "' + DASH_LESSONS_TAB + '" tab found' +
+        (LESSON_SHEET_ID ? ' in the lesson spreadsheet' : '. Set LESSON_SHEET_ID in dashboard-api.gs') };
+    }
+    return dashReadSheet_(sheet, ss.getSpreadsheetTimeZone());
+  } catch (err) {
+    return { headers: [], rows: [], error: 'Could not open the lesson spreadsheet: ' + ((err && err.message) || err) };
+  }
 }
 
 function dashReadStudents_() {

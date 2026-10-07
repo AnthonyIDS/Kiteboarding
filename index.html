@@ -413,7 +413,7 @@
   'use strict';
 
   // Paste the Apps Script web app URL here (it ends in /exec).
-  const API_URL = '';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbxdhVoA6O8AkcDy9F2urjRvR7B_03CZgrdcm-QjEVlR4nt_W3ULCbwMoS6DQynV5ncW/exec';
 
   const KEY_STORAGE = 'ksp-dashboard-key';
   const PALETTE = ['#2563eb', '#db2777', '#059669', '#d97706', '#7c3aed', '#0891b2',
@@ -739,6 +739,10 @@
     const list = q ? m.lessons.filter((l) => l.hay.indexOf(q) >= 0) : m.lessons;
     $('lessons-count').textContent = q ? list.length + ' of ' + m.lessons.length : String(m.lessons.length);
     const box = $('lessons');
+    if (m.lessonsError && !m.lessons.length) {
+      box.innerHTML = '<div class="note-error">' + esc(m.lessonsError) + '</div>';
+      return;
+    }
     if (!list.length) {
       box.innerHTML = '<div class="empty">' + (q ? 'No requests match “' + esc(q) + '”.' : 'No lesson requests yet.') + '</div>';
       return;

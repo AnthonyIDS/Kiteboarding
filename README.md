@@ -14,43 +14,47 @@ To preview with sample data, open `index.html?demo`. The page also shows sample 
 
 ## Setup
 
-### 1. Add the script to the lesson spreadsheet
+### 1. Add the script to a spreadsheet
 
-1. Open the lesson spreadsheet, then go to **Extensions → Apps Script**.
-2. Next to **Files**, click **+ → Script** and name the new file `dashboard-api`.
-3. Paste in the contents of [`apps-script/dashboard-api.gs`](apps-script/dashboard-api.gs).
-4. Set the constants at the top of the file:
-   - `DASHBOARD_KEY`: a long random passphrase. This is the team's access key.
-   - `STUDENT_SHEET_ID`: the ID of the student availability spreadsheet. It's the part of the URL between `/d/` and `/edit`.
+The script can live in its own spreadsheet (the current setup) or in the lesson spreadsheet beside the Ninja Forms `doPost()`. It only reads the lesson and student sheets, so the form keeps working either way.
+
+1. Open the spreadsheet that should hold the **Instructors** and **Time Off** tabs, then go to **Extensions → Apps Script**.
+2. Next to **Files**, click **+ → Script** and name the new file `dashboard-api`. Replace its contents with [`apps-script/dashboard-api.gs`](apps-script/dashboard-api.gs).
+3. Set the constants at the top of the file. Change only these lines:
+   - `DASHBOARD_KEY`: a long random passphrase using only letters, numbers and dashes. This is the team's access key.
+   - `LESSON_SHEET_ID`: the ID of the spreadsheet with the **Lesson Requests** tab. It's the part of its URL between `/d/` and `/edit`. Leave it `''` if that tab is in this spreadsheet.
+   - `STUDENT_SHEET_ID`: the ID of the student availability spreadsheet.
    - `STUDENT_TAB`: the tab name in that spreadsheet. Leave it `''` to use the first tab.
-5. Click **Save**.
+4. Click **Save**.
 
-Leave the existing file with `doPost()` as it is. The new file adds only `doGet()`, and every other global in it starts with `dash`, so nothing collides. **One check:** search the existing file for `function doGet`. If it already has one, the two will clash, so tell me before you deploy.
+If you add the script to a project that already has code, such as the one with `doPost()`, search that code for `function doGet` first. Only one `doGet` can exist per project.
 
 ### 2. Run `setupDashboardTabs` once
 
 In the editor toolbar, choose **setupDashboardTabs** from the function menu and click **Run**.
 
-- Google asks you to authorize the script. The script now also reads the student spreadsheet, so this is a new permission.
+- Google asks you to authorize the script, including access to the lesson and student spreadsheets.
 - The function creates the **Instructors** tab (Name, Phone, Email, Color) and the **Time Off** tab (Instructor, Start Date, End Date, Notes) if they're missing, with bold, frozen headers.
-- Check **Execution log**. It lists the row count for each tab, or an error if the student spreadsheet can't be opened.
+- Check **Execution log**. It lists the row count for each tab, or an error if a spreadsheet can't be opened.
 
 Fill in the tabs:
 
 - **Instructors → Color** is optional. Use a hex value such as `#0e7490`. If it's blank or not a valid hex value, the dashboard picks a color for that person.
 - **Time Off → End Date** can be left blank for single days. Anyone listed in Time Off who isn't on the Instructors tab still shows up on the calendar.
 
-### 3. Redeploy without changing the URL
+### 3. Deploy
 
-Your WordPress form already posts to this script's `/exec` URL, so **update the existing deployment instead of creating a new one**:
+**First time (no deployment yet):** click **Deploy → New deployment**, click the gear next to **Select type** and choose **Web app**, set **Execute as: Me** and **Who has access: Anyone**, then click **Deploy** and copy the **Web app URL**.
+
+**Every change after that**, including a new key, keep the same URL:
 
 1. Click **Deploy → Manage deployments**.
-2. Select the existing web app deployment and click **Edit** (the pencil icon).
+2. Select the web app deployment and click **Edit** (the pencil icon).
 3. Under **Version**, choose **New version**, then click **Deploy**.
 
-The URL stays the same, and Ninja Forms submissions keep working. Leave the settings as they are: **Execute as: Me** and **Who has access: Anyone**. The dashboard needs "Anyone" to fetch the data, and the access key protects it.
+Saving alone doesn't update the live script. Each deployment is a snapshot, so you must deploy a new version. If the script shares a project with the Ninja Forms `doPost()`, always use **Edit → New version**, never **New deployment**, so the form's URL keeps working. The dashboard needs **Who has access: Anyone** to fetch the data, and the access key protects it.
 
-To test, open `<your /exec URL>?key=<your key>` in a browser. You should see JSON that starts with `{"ok":true`.
+To test, open `<your /exec URL>?key=<your key>` in a browser's address bar. You should see JSON that starts with `{"ok":true`.
 
 ### 4. Set `API_URL`
 
@@ -60,7 +64,7 @@ In `index.html`, paste the `/exec` URL near the top of the script:
 const API_URL = 'https://script.google.com/macros/s/AKfy.../exec';
 ```
 
-Commit and push. The URL isn't a secret, since it's already in your website's form settings. **Never put the key in this file.**
+Commit and push. The URL alone gives no access to any data without the key. **Never put the key in this file.**
 
 ### 5. Turn on GitHub Pages
 
@@ -82,5 +86,5 @@ The access key only keeps casual visitors out. It is **not** strong security:
 
 - Anyone with the key can read every lesson request and every student's contact details. The key is stored in each team member's browser.
 - The page carries `noindex`, so search engines shouldn't list it. The page itself is public, though. Only the data needs the key.
-- **Rotate the key whenever someone leaves the team.** Change `DASHBOARD_KEY`, then redeploy with **Manage deployments → Edit → New version**, as in step 3. Then share the new key with the team. Old keys stop working immediately, and anyone using one is sent back to the key prompt.
+- **Rotate the key whenever someone leaves the team.** Change `DASHBOARD_KEY`, then deploy a new version with **Manage deployments → Edit → New version**, as in step 3. Then share the new key with the team. Old keys stop working immediately, and anyone using one is sent back to the key prompt.
 - Don't share the key in public channels, and never commit it to this repository.
