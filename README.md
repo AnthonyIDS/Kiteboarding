@@ -7,7 +7,7 @@ Google Sheet ("Lesson Requests" tab) ──► Apps Script web app (JSON) ──
 ```
 
 - **Data** stays in Google Sheets. The repo holds no data and no secrets.
-- **`apps-script/dashboard-api.gs`** is a reference copy of the script that serves the **Lesson Requests** tab as JSON. The live copy lives in Apps Script. It only reads the sheet, so the form that writes there keeps working.
+- **`apps-script/dashboard-api.gs`** is a reference copy of the script that serves the **Lesson Requests** tab as JSON. The live copy lives in Apps Script. It never changes the **Lesson Requests** tab, so the form that writes there keeps working. Team notes and **Jetski Needed** are saved on their own tab, **Dashboard Notes**, which the script creates the first time someone saves.
 - **`index.html`** is the whole dashboard: one static file with no build step.
 
 To preview with sample data, open `index.html?demo`.
@@ -67,14 +67,26 @@ On first visit, each team member enters the access key once. The browser remembe
 - **Student availability** groups open requests into **Flexible**, **Weekends** and **Weekdays** using the availability column. "Flexible", "Any day" and every-day answers go under Flexible. Someone free on both a weekday and a weekend day appears in both lists.
 - **Instructor colors**: if the sheet has an **Instructor** column, each student is colored by their instructor on the calendar, in the availability lists and on the request cards. Brad is green and Anthony is blue. Other instructors get the next free color automatically. To change a color, edit `INSTRUCTOR_COLORS` near the top of the script in `index.html` (choices: green, blue, purple, orange, pink, teal). Students with no instructor yet are gray.
 - **Lesson requests** are listed newest first. Every form field appears automatically, so new form fields show up without any changes here. Search, or filter by status.
-- Put internal notes in the sheet's **Notes** column and update **Status** as you go (for example New → Contacted → Booked).
+- **Jetski Needed and team notes**: every request card has a **Jetski Needed** No/Yes switch and a box to leave a note for the team. Type your name once next to **Add note**; the browser remembers it. When Jetski Needed is Yes, an orange **Jetski needed** badge shows on the card, in the calendar's day list and in the student availability lists, for everyone. Notes show newest first with who wrote them and when. Others see a change after they press **Refresh**. Everything is stored on the **Dashboard Notes** tab (one row per student), so you can read it in the sheet too. Don't rename that tab or its **Request ID** column, or the notes stop matching their students.
+- You can still put notes in the sheet's own **Notes** column and update **Status** as you go (for example New → Contacted → Booked).
 - Press **Refresh** to see new submissions.
+
+## Updating the script (after a change to `dashboard-api.gs`)
+
+1. Open [`apps-script/dashboard-api.gs`](apps-script/dashboard-api.gs) on GitHub and click the **Copy raw file** button (two overlapping squares, top right of the code).
+2. In your spreadsheet, go to **Extensions → Apps Script** and open the `dashboard-api` file.
+3. Before replacing anything, copy your two settings lines, `DASHBOARD_KEY` and `SHEET_ID`, somewhere safe (a note on your phone is fine).
+4. Select everything in the file (**Ctrl+A**, or **Cmd+A** on a Mac), then paste (**Ctrl+V** / **Cmd+V**).
+5. Put your `DASHBOARD_KEY` and `SHEET_ID` values back in those two lines, then click **Save**.
+6. Choose **checkDashboard** in the toolbar and click **Run**. If Google asks for permission again, approve it.
+7. Click **Deploy → Manage deployments → Edit** (pencil), set **Version** to **New version**, and click **Deploy**. The URL stays the same.
+8. Open the dashboard and press **Refresh**.
 
 ## Security note
 
 The access key only keeps casual visitors out. It is **not** strong security:
 
-- Anyone with the key can read every lesson request, including names, phone numbers and emails. The key is stored in each team member's browser.
+- Anyone with the key can read every lesson request, including names, phone numbers and emails, and can add team notes and change Jetski Needed. The key is stored in each team member's browser.
 - The page carries `noindex`, so search engines shouldn't list it. The page itself is public, though. Only the data needs the key.
 - **Rotate the key whenever someone leaves the team.** Change `DASHBOARD_KEY` in Apps Script, deploy a new version (step 3), and share the new key. Old keys stop working immediately.
 - Don't share the key in public channels, and never commit it to this repository.

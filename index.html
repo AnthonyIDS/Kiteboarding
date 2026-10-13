@@ -75,7 +75,7 @@
   }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  button, input, select { font: inherit; color: inherit; }
+  button, input, select, textarea { font: inherit; color: inherit; }
   [hidden] { display: none !important; }
   .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
 
@@ -194,6 +194,38 @@
   }
   .req-notes b { font-weight: 600; }
   .req-time { margin-top: 10px; color: var(--muted); font-size: 12.5px; }
+  .req-pills { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  .pill.jetski { background: var(--orange-soft); color: var(--orange); }
+
+  /* Team notes and Jetski Needed */
+  .team { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .team-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .team-lbl { font-weight: 600; }
+  .seg { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+  .seg button {
+    height: 28px; min-width: 52px; padding: 0 12px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--muted); font-weight: 600; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
+  .seg button[data-jetski="yes"][aria-pressed="true"] { background: var(--orange); color: #fff; }
+  .seg button:disabled { cursor: default; opacity: .6; }
+  .seg button:focus-visible, .note-form textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .team-notes {
+    margin-top: 10px; padding: 8px 10px; border-radius: 8px; max-height: 180px; overflow-y: auto;
+    background: var(--surface-2); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px;
+  }
+  .team-notes b { font-weight: 600; }
+  .note-form { margin-top: 10px; }
+  .note-form textarea {
+    display: block; width: 100%; min-height: 56px; padding: 8px 10px; resize: vertical;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit;
+  }
+  .note-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .note-actions .field { height: 34px; flex: 1; min-width: 0; }
+  .note-actions .btn { height: 34px; }
+  .team-msg { margin-top: 6px; font-size: 12.5px; color: var(--muted); min-height: 0; }
+  .team-msg:empty { display: none; }
+  .team-msg.error { color: var(--danger); }
 
   /* Calendar */
   .cal-nav { display: flex; align-items: center; gap: 8px; }
@@ -421,7 +453,7 @@
       </div>
       <select class="status-filter" id="status-filter" aria-label="Filter by status"><option value="">All statuses</option></select>
     </div>
-    <div class="panel-body"><div class="req-grid" id="lessons"></div></div>
+    <div class="panel-body"><div class="req-grid" id="lessons"></div><datalist id="team-names"></datalist></div>
   </section>
 
   <div class="footer">Lesson requests come from the team Google Sheet. Press Refresh to see new ones.</div>
@@ -441,6 +473,7 @@
   const IC_PALETTE = ['green', 'blue', 'purple', 'orange', 'pink', 'teal'];
 
   const KEY_STORAGE = 'ksp-dashboard-key';
+  const NAME_STORAGE = 'ksp-dashboard-name';
   const DAY_MS = 864e5;
 
   const params = new URLSearchParams(location.search);
@@ -448,7 +481,7 @@
   const DEMO = params.has('demo') || !API_READY;
 
   const $ = (id) => document.getElementById(id);
-  const state = { data: null, model: null, view: null, selected: null, loading: false };
+  const state = { data: null, model: null, view: null, selected: null, loading: false, drafts: {}, msgs: {}, saving: {} };
   let memKey = '';
 
   // ---------- Storage (every call guarded) ----------
@@ -458,6 +491,11 @@
     clear() { try { localStorage.removeItem(KEY_STORAGE); } catch (e) { /* ignore */ } }
   };
   const getKey = () => memKey || keyStore.get();
+  const nameStore = {
+    get() { try { return localStorage.getItem(NAME_STORAGE) || ''; } catch (e) { return ''; } },
+    set(v) { try { localStorage.setItem(NAME_STORAGE, v); } catch (e) { /* ignore */ } }
+  };
+  let myName = nameStore.get();
 
   // ---------- Helpers ----------
   function esc(v) {
@@ -617,11 +655,17 @@
       [lc.date, lc.altDate, lc.time]);
     lc.type = findCol(free, [/\blesson\b.*\b(type|package)\b/, /\b(lesson|package|service|type)\b/], [lc.date, lc.altDate, lc.time, lc.avail]);
 
+    const team = data.team || {};
     const lessons = L.rows.map((r, idx) => {
       const name = lc.name ? r[lc.name] : [r[lc.first], r[lc.last]].filter((x) => !isBlank(x)).join(' ');
       const fields = lh.filter((h) => used.indexOf(h) < 0 && !isBlank(r[h])).map((h) => [h, fmtValue(r[h])]);
+      const id = requestId(r, lc, name, idx);
+      const t = team[id] || {};
       return {
         idx,
+        id,
+        jetski: t.jetski === true,
+        teamNotes: t.notes ? String(t.notes) : '',
         name: isBlank(name) ? '' : String(name).trim(),
         status: lc.status && !isBlank(r[lc.status]) ? String(r[lc.status]).trim() : '',
         notes: lc.notes && !isBlank(r[lc.notes]) ? String(r[lc.notes]) : '',
@@ -635,7 +679,7 @@
         time: lc.time ? r[lc.time] : '',
         avail: lc.avail && !isBlank(r[lc.avail]) ? String(r[lc.avail]).trim() : '',
         instructor: lc.instructor && !isBlank(r[lc.instructor]) ? String(r[lc.instructor]).trim() : '',
-        hay: lh.map((h) => r[h]).concat(fields.map((f) => f[1])).join(' \u0001 ').toLowerCase()
+        hay: lh.map((h) => r[h]).concat(fields.map((f) => f[1]), [t.notes || '']).join(' \u0001 ').toLowerCase()
       };
     });
     // Newest first; rows without a date keep sheet order (newer rows are lower).
@@ -710,6 +754,9 @@
 
     const weekAgo = now.getTime() - 7 * DAY_MS;
     return {
+      // Notes and Jetski need the updated Apps Script, which sends "team".
+      teamReady: DEMO || !!data.team,
+      byId: lessons.reduce((o, l) => { o[l.id] = l; return o; }, {}),
       days,
       weekly,
       undated,
@@ -730,6 +777,19 @@
       lessonsError: L.error
     };
   }
+
+  // Stable id for a request, used to file its team notes on the
+  // "Dashboard Notes" tab: when it was submitted plus who sent it.
+  function requestId(r, lc, name, idx) {
+    const parts = [
+      lc.submitted ? r[lc.submitted] : '',
+      lc.email ? r[lc.email] : '',
+      lc.phone ? String(r[lc.phone] == null ? '' : r[lc.phone]).replace(/\D/g, '') : '',
+      name
+    ].map((v) => String(v == null ? '' : v).trim().toLowerCase());
+    return parts.some(Boolean) ? parts.join('|') : 'row-' + idx;
+  }
+  const jetskiPill = (l) => (l.jetski ? '<span class="pill jetski">Jetski needed</span>' : '');
 
   // Time of a requested lesson, for sorting (minutes after midnight) and
   // display. Uses the time in the date cell if there is one, else the time
@@ -862,16 +922,103 @@
         when = 'Submitted ' + fmtDay(l.submitted) + ' · ' + fmtTime(l.submitted) + (rel ? ' · ' + rel : '');
       }
       return '<article class="req' + (m.instCol ? ' ' + icClass(l) : '') + '">' +
-        '<div class="req-top"><h3>' + esc(l.name || 'Unnamed request') + '</h3>' +
-        (l.status ? '<span class="pill ' + tone + '">' + esc(l.status) + '</span>' : '') + '</div>' +
+        '<div class="req-top"><h3>' + esc(l.name || 'Unnamed request') + '</h3><span class="req-pills">' + jetskiPill(l) +
+        (l.status ? '<span class="pill ' + tone + '">' + esc(l.status) + '</span>' : '') + '</span></div>' +
         (l.instructor ? '<div>' + instLabel(l) + '</div>' : '') +
         (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') +
         (l.fields.length ? '<ul class="fields">' + l.fields.map((f) =>
           '<li><span class="lbl">' + esc(f[0]) + ':</span> ' + esc(f[1]) + '</li>').join('') + '</ul>' : '') +
         (l.notes ? '<div class="req-notes"><b>Notes:</b> ' + esc(l.notes) + '</div>' : '') +
         (when ? '<div class="req-time">' + esc(when) + '</div>' : '') +
+        teamHtml(l) +
         '</article>';
     }).join('');
+    $('team-names').innerHTML = Object.keys(m.instructors).map((k) => '<option value="' + esc(m.instructors[k].name) + '">').join('');
+  }
+
+  // Jetski Needed switch, team notes and the "add a note" box on a card.
+  function teamHtml(l) {
+    const ready = state.model.teamReady;
+    const busy = !!state.saving[l.id];
+    const off = !ready || busy ? ' disabled' : '';
+    const msg = !ready ? { text: 'To save notes and Jetski Needed, update the Apps Script (see the README).' } : state.msgs[l.id];
+    const label = esc('Jetski Needed for ' + (l.name || 'this student'));
+    return '<div class="team" data-id="' + esc(l.id) + '">' +
+      '<div class="team-row"><span class="team-lbl">Jetski Needed</span>' +
+      '<div class="seg" role="group" aria-label="' + label + '">' +
+      '<button type="button" data-jetski="no" aria-pressed="' + !l.jetski + '"' + off + '>No</button>' +
+      '<button type="button" data-jetski="yes" aria-pressed="' + l.jetski + '"' + off + '>Yes</button></div></div>' +
+      (l.teamNotes ? '<div class="team-notes"><b>Team notes</b>\n' + esc(l.teamNotes) + '</div>' : '') +
+      '<form class="note-form">' +
+      '<textarea name="note" maxlength="2000" placeholder="Leave a note for the team" aria-label="' + esc('Note about ' + (l.name || 'this student')) + '"' + off + '>' +
+      esc(state.drafts[l.id] || '') + '</textarea>' +
+      '<div class="note-actions"><input class="field by" name="by" list="team-names" maxlength="60" placeholder="Your name" aria-label="Your name" value="' +
+      esc(myName) + '"' + off + '><button class="btn btn-primary" type="submit"' + off + '>' + (busy ? 'Saving…' : 'Add note') + '</button></div>' +
+      '</form>' +
+      '<div class="team-msg' + (msg && msg.error ? ' error' : '') + '" role="status">' + esc(msg ? msg.text : '') + '</div>' +
+      '</div>';
+  }
+
+  // Saves through the same web app: GET ...&action=save. Using doGet keeps
+  // clear of any doPost the website form may have in the same project.
+  async function saveTeam(l, patch) {
+    const by = myName.trim() || 'Team member';
+    if (DEMO) {
+      const stamp = fmtDay(new Date()) + ', ' + fmtTime(new Date());
+      return {
+        jetski: 'jetski' in patch ? patch.jetski : l.jetski,
+        notes: patch.note ? stamp + ' · ' + by + ': ' + patch.note + (l.teamNotes ? '\n' + l.teamNotes : '') : l.teamNotes
+      };
+    }
+    const q = new URLSearchParams({ key: getKey(), action: 'save', id: l.id, student: l.name, by });
+    if ('jetski' in patch) q.set('jetski', patch.jetski ? 'yes' : 'no');
+    if (patch.note) q.set('note', patch.note);
+    const res = await fetch(API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + q.toString(), { cache: 'no-store' });
+    let json;
+    try { json = JSON.parse(await res.text()); } catch (e) { throw new Error('Couldn’t save. Check your connection and try again.'); }
+    if (json.error === 'unauthorized') throw new Error('The access key no longer works. Click Lock and enter the new key.');
+    if (!json.ok) throw new Error(json.error || 'Couldn’t save.');
+    if (!json.record) throw new Error('Saving needs the updated Apps Script. See the README.');
+    return json.record;
+  }
+
+  // Re-renders without losing the place of someone typing in another card.
+  function renderKeepFocus() {
+    const a = document.activeElement;
+    const id = a && a.closest && a.closest('.team') ? a.closest('.team').dataset.id : null;
+    const name = id && a.name;
+    const sel = id && 'selectionStart' in a ? [a.selectionStart, a.selectionEnd] : null;
+    render();
+    if (!id || !name) return;
+    const box = Array.prototype.find.call(document.querySelectorAll('#lessons .team'), (b) => b.dataset.id === id);
+    const el = box && box.querySelector('[name="' + name + '"]');
+    if (!el || el.disabled) return;
+    el.focus();
+    if (sel) { try { el.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text field */ } }
+  }
+
+  async function updateTeam(id, patch) {
+    const l = state.model && state.model.byId[id];
+    if (!l || state.saving[id]) return;
+    const before = { jetski: l.jetski, teamNotes: l.teamNotes };
+    if ('jetski' in patch) l.jetski = patch.jetski; // show it right away
+    state.saving[id] = true;
+    state.msgs[id] = { text: 'Saving…' };
+    renderKeepFocus();
+    try {
+      const rec = await saveTeam(l, patch);
+      l.jetski = rec.jetski === true;
+      l.teamNotes = rec.notes ? String(rec.notes) : '';
+      if (patch.note) delete state.drafts[id];
+      state.msgs[id] = { text: 'Saved. The team sees it after Refresh.' };
+    } catch (err) {
+      l.jetski = before.jetski;
+      l.teamNotes = before.teamNotes;
+      state.msgs[id] = { text: err.message || 'Couldn’t save.', error: true };
+    } finally {
+      delete state.saving[id];
+      if (state.model && state.model.byId[id] === l) renderKeepFocus();
+    }
   }
 
   // ---------- Calendar ----------
@@ -919,6 +1066,7 @@
               .filter(Boolean).join(' · ');
             return '<li class="' + icClass(l) + '"><div><strong>' + esc(l.name || 'Unnamed request') + '</strong>' +
               (l.status ? ' <span class="pill ' + statusTone(l.status) + '">' + esc(l.status) + '</span>' : '') +
+              (l.jetski ? ' ' + jetskiPill(l) : '') +
               '<div class="muted">' + esc(sub) + '</div>' +
               (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') + '</div></li>';
           }).join('') + '</ul>'
@@ -1021,6 +1169,7 @@
           return '<li><span class="when">' + esc(e.label || (e.weekly ? 'Available' : 'Any time')) + '</span><span class="who"><strong>' +
             esc(l.name || 'Unnamed request') + '</strong>' +
             (l.status ? ' <span class="pill ' + statusTone(l.status) + '">' + esc(l.status) + '</span>' : '') +
+            (l.jetski ? ' ' + jetskiPill(l) : '') +
             (l.instructor ? '<div>' + instLabel(l) + '</div>' : '') +
             (sub ? '<div class="muted">' + esc(sub) + '</div>' : '') +
             (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') +
@@ -1109,7 +1258,7 @@
       const d = new Date(now.getTime() - mins * 60000);
       return dayKey(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':00';
     };
-    return {
+    const data = {
       ok: true,
       updated: at(0, now.getHours(), now.getMinutes()),
       lessons: {
@@ -1126,8 +1275,16 @@
           { Submitted: ago(60 * 24 * 11), Status: 'Cancelled', Notes: 'Moved out of state.', Name: 'Olivia Grant', Email: 'olivia.grant@example.com', Phone: '(727) 555-0109', 'Lesson Type': 'Discovery lesson (2 hrs)', 'Preferred Date': D(-8), 'Preferred Time': '', Availability: 'Any day', Instructor: '', 'Experience Level': 'Never kited', 'Weight (lbs)': 150, Message: '' },
           { Submitted: ago(60 * 24 * 15), Status: 'Booked', Notes: 'Recurring Tuesdays.', Name: 'Noah Fischer', Email: 'noah.f@example.com', Phone: '(727) 555-0181', 'Lesson Type': 'Coaching session', 'Preferred Date': D(-14), 'Preferred Time': '5:00 PM', Availability: 'Tuesday', Instructor: 'Anthony', 'Experience Level': 'Independent rider', 'Weight (lbs)': 165, Message: 'Working on jumps.' }
         ]
-      }
+      },
+      team: {}
     };
+    // Sample team notes, filed under the same ids the real ones use.
+    const rows = data.lessons.rows;
+    const lc = { submitted: 'Submitted', email: 'Email', phone: 'Phone' };
+    const idOf = (i) => requestId(rows[i], lc, rows[i].Name, i);
+    data.team[idOf(3)] = { jetski: true, notes: 'Yesterday · Brad: Strong wind forecast, he drifts downwind. Bring the jetski.', updated: '', by: 'Brad' };
+    data.team[idOf(1)] = { jetski: false, notes: 'Today · Anthony: Called him, Saturday afternoon works.', updated: '', by: 'Anthony' };
+    return data;
   }
 
   // ---------- Events ----------
@@ -1165,6 +1322,39 @@
       state.view = { y: d.getFullYear(), m: d.getMonth() };
     }
     renderCalendar();
+  });
+  const teamOf = (el) => { const box = el.closest('.team'); return box ? box.dataset.id : null; };
+  $('lessons').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-jetski]');
+    const id = btn && teamOf(btn);
+    if (!id || btn.disabled) return;
+    const want = btn.dataset.jetski === 'yes';
+    if (state.model.byId[id] && state.model.byId[id].jetski !== want) updateTeam(id, { jetski: want });
+  });
+  $('lessons').addEventListener('input', (e) => {
+    const id = teamOf(e.target);
+    if (!id) return;
+    if (e.target.name === 'note') state.drafts[id] = e.target.value;
+    if (e.target.name === 'by') {
+      myName = e.target.value;
+      nameStore.set(myName.trim());
+      document.querySelectorAll('.note-form .by').forEach((f) => { if (f !== e.target) f.value = myName; });
+    }
+  });
+  $('lessons').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = teamOf(e.target);
+    if (!id) return;
+    const note = e.target.elements.note.value.trim();
+    if (!note) { e.target.elements.note.focus(); return; }
+    if (!myName.trim()) {
+      state.msgs[id] = { text: 'Type your name next to the button so the team knows who wrote it.', error: true };
+      renderLessons();
+      const box = Array.prototype.find.call(document.querySelectorAll('#lessons .team'), (b) => b.dataset.id === id);
+      if (box) box.querySelector('.by').focus();
+      return;
+    }
+    updateTeam(id, { note });
   });
   $('lessons-q').addEventListener('input', () => state.model && renderLessons());
   $('status-filter').addEventListener('change', () => state.model && renderLessons());
