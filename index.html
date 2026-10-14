@@ -481,15 +481,22 @@
   // Instructor colors, by first name (lower case). Instructors not listed
   // here get the next free color automatically.
   // Choices: green, blue, purple, orange, pink, teal.
-  const INSTRUCTOR_COLORS = { brad: 'green', anthony: 'blue' };
+  const INSTRUCTOR_COLORS = { brad: 'green', anthony: 'blue', nate: 'purple' };
   const IC_PALETTE = ['green', 'blue', 'purple', 'orange', 'pink', 'teal'];
 
-  // Google Calendar to show instead of the built-in lesson calendar. Paste
-  // its Calendar ID (Google Calendar > Settings > your calendar > Integrate
-  // calendar). Add more IDs, comma separated, to show several calendars.
-  // Leave the list empty to use the built-in calendar.
-  const GOOGLE_CALENDAR_IDS = [];
+  // Google Calendars to show instead of the built-in lesson calendar, one
+  // per instructor. Paste each Calendar ID between the quotes (Google
+  // Calendar > Settings > the calendar's name > Integrate calendar). Each
+  // shows in that instructor's color above. With every ID blank, the
+  // built-in calendar shows instead.
+  const GOOGLE_CALENDARS = {
+    Brad: '',
+    Anthony: '',
+    Nate: ''
+  };
   const GOOGLE_CALENDAR_TZ = 'America/New_York';
+  // Google Calendar's own shades of the instructor colors.
+  const GCAL_HEX = { green: '#0B8043', blue: '#3F51B5', purple: '#8E24AA', orange: '#F4511E', pink: '#D81B60', teal: '#009688' };
 
   const KEY_STORAGE = 'ksp-dashboard-key';
   const NAME_STORAGE = 'ksp-dashboard-name';
@@ -879,11 +886,14 @@
   const isOpen = (status) => statusTone(status) !== 'danger' && !/complet|done|finish/i.test(status);
 
   // ---------- Google Calendar ----------
-  const GCAL = GOOGLE_CALENDAR_IDS.map((id) => String(id).trim()).filter(Boolean);
+  const GCAL = Object.keys(GOOGLE_CALENDARS)
+    .map((name) => ({ id: String(GOOGLE_CALENDARS[name] || '').trim(), color: INSTRUCTOR_COLORS[instKey(name)] }))
+    .filter((c) => c.id);
   function showGoogleCalendar() {
     if (!GCAL.length || $('gcal').firstChild) return;
     const phone = window.matchMedia('(max-width: 640px)').matches;
-    const q = GCAL.map((id) => 'src=' + encodeURIComponent(id)).join('&') +
+    const q = GCAL.map((c) => 'src=' + encodeURIComponent(c.id) +
+      (GCAL_HEX[c.color] ? '&color=' + encodeURIComponent(GCAL_HEX[c.color]) : '')).join('&') +
       '&ctz=' + encodeURIComponent(GOOGLE_CALENDAR_TZ) + '&mode=' + (phone ? 'AGENDA' : 'MONTH') +
       '&wkst=1&showPrint=0&showTitle=0&showCalendars=' + (GCAL.length > 1 ? 1 : 0);
     const f = document.createElement('iframe');
