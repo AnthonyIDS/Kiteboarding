@@ -322,6 +322,10 @@
   .avail-col .muted { color: var(--muted); font-size: 13px; }
   .avail-col .contact { margin-top: 2px; font-size: 13px; }
   .avail-col .empty { padding: 16px 14px; text-align: left; }
+  .clients { margin-top: 16px; }
+  .clients h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .clients h3 select { width: auto; min-width: 160px; height: 32px; padding: 0 8px; font-weight: 500; max-width: 60%; }
+  .clients .past { opacity: .7; }
   .detail { padding: 16px 0 0; }
   .detail h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
   .detail ul { list-style: none; margin: 0; padding: 0; }
@@ -490,7 +494,14 @@
     <div class="panel-head"><h2 id="avail-h">Student availability<span class="count" id="avail-count"></span></h2></div>
     <div class="cal-note" id="avail-note"></div>
     <div class="legend" id="avail-legend" hidden></div>
-    <div class="panel-body"><div class="avail-grid" id="avail-groups"></div></div>
+    <div class="panel-body">
+      <div class="avail-grid" id="avail-groups"></div>
+      <div class="avail-col clients" id="clients" hidden>
+        <h3><span>Instructor’s clients<span class="count" id="clients-count"></span></span>
+          <select class="field" id="clients-inst" aria-label="Instructor"></select></h3>
+        <ul id="clients-list"></ul>
+      </div>
+    </div>
   </section>
 
   <section class="panel" aria-labelledby="lessons-h">
@@ -536,6 +547,7 @@
   const GCAL_HEX = { green: '#0B8043', blue: '#3F51B5', purple: '#8E24AA', orange: '#F4511E', pink: '#D81B60', teal: '#009688' };
 
   const KEY_STORAGE = 'ksp-dashboard-key';
+  const CLIENTS_STORAGE = 'ksp-dashboard-clients-of';
   const NAME_STORAGE = 'ksp-dashboard-name';
   const DAY_MS = 864e5;
 
@@ -1361,9 +1373,15 @@
   // ---------- Student availability ----------
   function renderAvailability() {
     const m = state.model;
-    const show = !!m.availCol;
-    $('avail-panel').hidden = !show;
-    if (!show) return;
+    $('avail-panel').hidden = !m.availCol && !m.instCol;
+    $('avail-groups').hidden = !m.availCol;
+    renderClients();
+    if (!m.availCol) {
+      $('avail-count').textContent = '';
+      $('avail-note').textContent = 'Students by instructor.';
+      $('avail-legend').hidden = true;
+      return;
+    }
     const cols = [['flexible', 'Flexible'], ['weekends', 'Weekends'], ['weekdays', 'Weekdays']];
     const people = new Set(cols.reduce((all, c) => all.concat(m.groups[c[0]]), []));
     $('avail-count').textContent = String(people.size);
@@ -1390,6 +1408,48 @@
         : '<div class="empty">Nobody yet.</div>') + '</div>';
     }).join('');
   }
+
+  // Instructor's clients: pick an instructor, see all their students.
+  // Current students first, then cancelled or completed ones.
+  const NO_INST = '__none__';
+  function renderClients() {
+    const m = state.model;
+    $('clients').hidden = !m.instCol;
+    if (!m.instCol) return;
+    const names = Object.keys(m.instructors).map((k) => m.instructors[k].name);
+    m.calendars.forEach((n) => { if (!names.some((x) => instKey(x) === instKey(n))) names.push(n); });
+    names.sort((a, b) => a.localeCompare(b));
+    const sel = $('clients-inst');
+    let cur = sel.value;
+    if (!cur) { try { cur = localStorage.getItem(CLIENTS_STORAGE) || ''; } catch (e) { cur = ''; } }
+    if (cur !== NO_INST && !names.some((n) => instKey(n) === instKey(cur))) cur = names[0] || NO_INST;
+    sel.innerHTML = names.map((n) => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('') +
+      '<option value="' + NO_INST + '">No instructor yet</option>';
+    sel.value = cur === NO_INST ? NO_INST : names.find((n) => instKey(n) === instKey(cur));
+    const list = m.lessons
+      .filter((l) => (cur === NO_INST ? !l.instructor : l.instructor && instKey(l.instructor) === instKey(cur)))
+      .sort((a, b) => isOpen(b.status) - isOpen(a.status) || a.name.localeCompare(b.name));
+    $('clients-count').textContent = String(list.length);
+    const today = startOfDay(new Date());
+    $('clients-list').innerHTML = list.length ? list.map((l) => {
+      const contact = [];
+      if (l.phone) contact.push(phoneLink(l.phone, true));
+      if (l.email) contact.push(mailLink(l.email, true));
+      const next = m.events.find((e) => e.id === l.id && parseDate(e.start) >= today);
+      const sub = [l.type, l.availText ? 'Available: ' + l.availText : '',
+        next ? 'Next lesson: ' + whenLabel(parseDate(next.start)) + (cur === NO_INST ? '' : next.instructor !== cur ? ' with ' + next.instructor : '') : '']
+        .filter(Boolean).join(' · ');
+      return '<li class="' + icClass(l) + (isOpen(l.status) ? '' : ' past') + '"><div><strong>' + esc(l.name || 'Unnamed request') + '</strong>' +
+        (l.status ? ' <span class="pill ' + statusTone(l.status) + '">' + esc(l.status) + '</span>' : '') +
+        (l.jetski ? ' ' + jetskiPill(l) : '') +
+        (sub ? '<div class="muted">' + esc(sub) + '</div>' : '') +
+        (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') + '</div></li>';
+    }).join('') : '<div class="empty">No students for ' + esc(cur === NO_INST ? 'this list' : cur) + ' yet.</div>';
+  }
+  $('clients-inst').addEventListener('change', (e) => {
+    try { localStorage.setItem(CLIENTS_STORAGE, e.target.value); } catch (err) { /* ignore */ }
+    if (state.model) renderClients();
+  });
 
   // Requests dated for this day, then (today onward) people available on its weekday.
   function dayItems(d) {
