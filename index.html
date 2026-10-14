@@ -227,6 +227,14 @@
   .team-msg:empty { display: none; }
   .team-msg.error { color: var(--danger); }
 
+  /* Add to calendar */
+  .book { margin-top: 10px; }
+  .book-form { margin-top: 8px; padding: 10px; border-radius: 10px; background: var(--surface-2); }
+  .book-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .book-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; font-weight: 500; color: var(--muted); min-width: 0; }
+  .book-grid .field { height: 34px; padding: 0 8px; min-width: 0; }
+  .book-form .note-actions .btn-primary { flex: 1; justify-content: center; }
+
   /* Calendar */
   .cal-nav { display: flex; align-items: center; gap: 8px; }
   .cal-title { font-size: 15px; font-weight: 600; min-width: 130px; text-align: center; }
@@ -507,7 +515,7 @@
   const DEMO = params.has('demo') || !API_READY;
 
   const $ = (id) => document.getElementById(id);
-  const state = { data: null, model: null, view: null, selected: null, loading: false, drafts: {}, msgs: {}, saving: {} };
+  const state = { data: null, model: null, view: null, selected: null, loading: false, drafts: {}, msgs: {}, saving: {}, book: {} };
   let memKey = '';
 
   // ---------- Storage (every call guarded) ----------
@@ -782,6 +790,8 @@
     return {
       // Notes and Jetski need the updated Apps Script, which sends "team".
       teamReady: DEMO || !!data.team,
+      // Instructors whose Google Calendar the script can add lessons to.
+      calendars: DEMO ? Object.keys(GOOGLE_CALENDARS) : (Array.isArray(data.calendars) ? data.calendars : []),
       byId: lessons.reduce((o, l) => { o[l.id] = l; return o; }, {}),
       days,
       weekly,
@@ -1003,7 +1013,86 @@
       esc(myName) + '"' + off + '><button class="btn btn-primary" type="submit"' + off + '>' + (busy ? 'Saving…' : 'Add note') + '</button></div>' +
       '</form>' +
       '<div class="team-msg' + (msg && msg.error ? ' error' : '') + '" role="status">' + esc(msg ? msg.text : '') + '</div>' +
+      bookHtml(l) +
       '</div>';
+  }
+
+  // "Add to calendar": books the lesson on an instructor's Google Calendar.
+  const BOOK_LENGTHS = [[60, '1 hr'], [90, '1.5 hrs'], [120, '2 hrs'], [180, '3 hrs'], [240, '4 hrs']];
+  function bookDefaults(l) {
+    const cals = state.model.calendars;
+    const inst = cals.find((n) => instKey(n) === instKey(l.instructor || '')) || '';
+    const d = parseDate(l.date);
+    const t = lessonTime(l.date, l.time);
+    const hrs = String(l.type || '').match(/(\d+(?:\.\d+)?)\s*(?:hrs?|hours?)\b/i);
+    const mins = hrs ? Math.round(+hrs[1] * 60) : 120;
+    return {
+      open: true,
+      instructor: inst,
+      date: d && startOfDay(d) >= startOfDay(new Date()) ? dayKey(d) : '',
+      time: t.exact ? pad(Math.floor(t.mins / 60)) + ':' + pad(t.mins % 60) : '09:00',
+      mins: String(BOOK_LENGTHS.some((x) => x[0] === mins) ? mins : 120)
+    };
+  }
+  function bookHtml(l) {
+    const cals = state.model.calendars;
+    if (!cals.length || !isOpen(l.status)) return '';
+    const b = state.book[l.id];
+    const msg = b && b.msg;
+    const msgHtml = msg ? '<div class="team-msg' + (msg.error ? ' error' : '') + '" role="status">' + esc(msg.text) + '</div>' : '';
+    if (!b || !b.open) {
+      return '<div class="book"><button class="btn" type="button" data-book="open">Add to calendar</button>' + msgHtml + '</div>';
+    }
+    const off = b.busy ? ' disabled' : '';
+    const opt = (v, label, cur) => '<option value="' + esc(v) + '"' + (String(v) === String(cur) ? ' selected' : '') + '>' + esc(label) + '</option>';
+    return '<div class="book"><form class="book-form">' +
+      '<div class="book-grid">' +
+      '<label>Instructor<select class="field" name="instructor"' + off + '>' + opt('', 'Pick one', b.instructor) +
+        cals.map((n) => opt(n, n, b.instructor)).join('') + '</select></label>' +
+      '<label>Length<select class="field" name="mins"' + off + '>' + BOOK_LENGTHS.map((x) => opt(x[0], x[1], b.mins)).join('') + '</select></label>' +
+      '<label>Date<input class="field" type="date" name="date" value="' + esc(b.date) + '"' + off + '></label>' +
+      '<label>Start time<input class="field" type="time" name="time" step="900" value="' + esc(b.time) + '"' + off + '></label>' +
+      '</div>' +
+      '<div class="note-actions"><button class="btn btn-primary" type="submit"' + off + '>' + (b.busy ? 'Adding…' : 'Add to calendar') + '</button>' +
+      '<button class="btn" type="button" data-book="cancel"' + off + '>Cancel</button></div>' +
+      '</form>' + msgHtml + '</div>';
+  }
+
+  async function bookLesson(id) {
+    const l = state.model && state.model.byId[id];
+    const b = state.book[id];
+    if (!l || !b || b.busy) return;
+    const fail = (text) => { b.msg = { text, error: true }; renderKeepFocus(); };
+    if (!b.instructor) return fail('Pick an instructor.');
+    if (!b.date) return fail('Pick a date.');
+    if (!b.time) return fail('Pick a start time.');
+    if (!myName.trim()) return fail('Type your name in the box next to Add note first, so the team knows who booked it.');
+    b.busy = true;
+    b.msg = { text: 'Adding to ' + b.instructor + '’s calendar…' };
+    renderKeepFocus();
+    try {
+      let json;
+      if (DEMO) {
+        const d = parseDate(b.date + 'T' + b.time);
+        json = { ok: true, booked: { instructor: b.instructor, when: fmt(d, { weekday: 'short', month: 'short', day: 'numeric' }) + ' at ' + fmtTime(d) } };
+      } else {
+        const q = new URLSearchParams({ key: getKey(), action: 'book', id: l.id, student: l.name || 'Student', by: myName.trim(),
+          instructor: b.instructor, date: b.date, start: b.time, minutes: b.mins, phone: l.phone, email: l.email, lesson: l.type });
+        const res = await fetch(API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + q.toString(), { cache: 'no-store' });
+        try { json = JSON.parse(await res.text()); } catch (e) { throw new Error('Couldn’t reach the calendar. Check your connection, then look in Google Calendar before trying again.'); }
+        if (json.error === 'unauthorized') throw new Error('The access key no longer works. Click Lock and enter the new key.');
+        if (!json.ok) throw new Error(json.error || 'Couldn’t add it to the calendar.');
+        if (!json.booked) throw new Error('Adding to the calendar needs the updated Apps Script. See the README.');
+        if (json.record) l.teamNotes = json.record.notes ? String(json.record.notes) : l.teamNotes;
+      }
+      state.book[id] = { msg: { text: 'Added to ' + json.booked.instructor + '’s calendar: ' + json.booked.when + '.' } };
+      const f = document.querySelector('#gcal iframe');
+      if (f) f.src = f.src; // show the new event
+    } catch (err) {
+      b.busy = false;
+      b.msg = { text: err.message || 'Couldn’t add it to the calendar.', error: true };
+    }
+    if (state.model && state.model.byId[id] === l) renderKeepFocus();
   }
 
   // Saves through the same web app: GET ...&action=save. Using doGet keeps
@@ -1372,13 +1461,33 @@
   });
   const teamOf = (el) => { const box = el.closest('.team'); return box ? box.dataset.id : null; };
   $('lessons').addEventListener('click', (e) => {
+    const bk = e.target.closest('[data-book]');
+    const bid = bk && teamOf(bk);
+    if (bid && state.model.byId[bid]) {
+      if (bk.dataset.book === 'open') state.book[bid] = bookDefaults(state.model.byId[bid]);
+      else delete state.book[bid];
+      renderKeepFocus();
+      if (bk.dataset.book === 'open') {
+        const box = Array.prototype.find.call(document.querySelectorAll('#lessons .team'), (x) => x.dataset.id === bid);
+        const first = box && box.querySelector('.book-form [name="' + (state.book[bid].instructor ? 'date' : 'instructor') + '"]');
+        if (first) first.focus();
+      }
+      return;
+    }
     const btn = e.target.closest('[data-jetski]');
     const id = btn && teamOf(btn);
     if (!id || btn.disabled) return;
     const want = btn.dataset.jetski === 'yes';
     if (state.model.byId[id] && state.model.byId[id].jetski !== want) updateTeam(id, { jetski: want });
   });
+  const bookField = (e) => {
+    const id = e.target.closest('.book-form') && teamOf(e.target);
+    if (id && state.book[id]) state.book[id][e.target.name] = e.target.value;
+    return !!id;
+  };
+  $('lessons').addEventListener('change', bookField);
   $('lessons').addEventListener('input', (e) => {
+    if (bookField(e)) return;
     const id = teamOf(e.target);
     if (!id) return;
     if (e.target.name === 'note') state.drafts[id] = e.target.value;
@@ -1392,6 +1501,7 @@
     e.preventDefault();
     const id = teamOf(e.target);
     if (!id) return;
+    if (e.target.classList.contains('book-form')) { bookLesson(id); return; }
     const note = e.target.elements.note.value.trim();
     if (!note) { e.target.elements.note.focus(); return; }
     if (!myName.trim()) {
