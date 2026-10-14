@@ -232,6 +232,8 @@
   .cal-title { font-size: 15px; font-weight: 600; min-width: 130px; text-align: center; }
   .cal-note { color: var(--muted); font-size: 13px; padding: 0 18px 12px; }
   .cal { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .gcal { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
+  .gcal iframe { display: block; width: 100%; height: 680px; border: 0; }
   .cal-dow, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .cal-dow div { padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border); }
   .cal-dow .short { display: none; }
@@ -344,6 +346,7 @@
     .chip.ic { background: var(--ic); padding: 0; line-height: 0; }
     .legend { padding: 0 14px 10px; }
     .avail-grid { grid-template-columns: minmax(0, 1fr); }
+    .gcal iframe { height: 560px; }
     .detail .when { width: 78px; }
     .brand h1 { font-size: 17px; }
     .actions { width: 100%; }
@@ -404,7 +407,16 @@
 
   <section class="kpis" id="kpis" aria-label="Summary"></section>
 
-  <section class="panel" aria-labelledby="cal-h">
+  <section class="panel" aria-labelledby="gcal-h" id="gcal-panel" hidden>
+    <div class="panel-head">
+      <h2 id="gcal-h">Lesson calendar</h2>
+      <a class="btn" href="https://calendar.google.com/calendar/r" target="_blank" rel="noopener">Open in Google Calendar</a>
+    </div>
+    <div class="cal-note">From the team Google Calendar. If it looks empty, sign in to Google with an account the calendar is shared with.</div>
+    <div class="panel-body"><div class="gcal" id="gcal"></div></div>
+  </section>
+
+  <section class="panel" aria-labelledby="cal-h" id="cal-panel">
     <div class="panel-head">
       <h2 id="cal-h">Lesson calendar</h2>
       <div class="cal-nav">
@@ -469,8 +481,22 @@
   // Instructor colors, by first name (lower case). Instructors not listed
   // here get the next free color automatically.
   // Choices: green, blue, purple, orange, pink, teal.
-  const INSTRUCTOR_COLORS = { brad: 'green', anthony: 'blue' };
+  const INSTRUCTOR_COLORS = { brad: 'green', anthony: 'blue', nate: 'purple' };
   const IC_PALETTE = ['green', 'blue', 'purple', 'orange', 'pink', 'teal'];
+
+  // Google Calendars to show instead of the built-in lesson calendar, one
+  // per instructor. Paste each Calendar ID between the quotes (Google
+  // Calendar > Settings > the calendar's name > Integrate calendar). Each
+  // shows in that instructor's color above. With every ID blank, the
+  // built-in calendar shows instead.
+  const GOOGLE_CALENDARS = {
+    Brad: '0ceee340ec4dce683454a4b150ca1fabc7fab4ad747dfbcd71f8fd66938ed6bd@group.calendar.google.com',
+    Anthony: 'info@kiteboardingstpetersburg.com',
+    Nate: 'ncc1erpf1hf6bdka7k4cp7m708@group.calendar.google.com'
+  };
+  const GOOGLE_CALENDAR_TZ = 'America/New_York';
+  // Google Calendar's own shades of the instructor colors.
+  const GCAL_HEX = { green: '#0B8043', blue: '#3F51B5', purple: '#8E24AA', orange: '#F4511E', pink: '#D81B60', teal: '#009688' };
 
   const KEY_STORAGE = 'ksp-dashboard-key';
   const NAME_STORAGE = 'ksp-dashboard-name';
@@ -859,12 +885,33 @@
   // Cancelled and finished requests don't need a slot any more.
   const isOpen = (status) => statusTone(status) !== 'danger' && !/complet|done|finish/i.test(status);
 
+  // ---------- Google Calendar ----------
+  const GCAL = Object.keys(GOOGLE_CALENDARS)
+    .map((name) => ({ id: String(GOOGLE_CALENDARS[name] || '').trim(), color: INSTRUCTOR_COLORS[instKey(name)] }))
+    .filter((c) => c.id);
+  function showGoogleCalendar() {
+    if (!GCAL.length || $('gcal').firstChild) return;
+    const phone = window.matchMedia('(max-width: 640px)').matches;
+    const q = GCAL.map((c) => 'src=' + encodeURIComponent(c.id) +
+      (GCAL_HEX[c.color] ? '&color=' + encodeURIComponent(GCAL_HEX[c.color]) : '')).join('&') +
+      '&ctz=' + encodeURIComponent(GOOGLE_CALENDAR_TZ) + '&mode=' + (phone ? 'AGENDA' : 'MONTH') +
+      '&wkst=1&showPrint=0&showTitle=0&showCalendars=' + (GCAL.length > 1 ? 1 : 0);
+    const f = document.createElement('iframe');
+    f.title = 'Team Google Calendar';
+    f.loading = 'lazy';
+    f.src = 'https://calendar.google.com/calendar/embed?' + q;
+    $('gcal').appendChild(f);
+    $('gcal-panel').hidden = false;
+    $('cal-panel').hidden = true;
+  }
+
   // ---------- Rendering ----------
   function render() {
     const m = state.model;
     if (!m) return;
     $('updated').textContent = m.updated ? 'Updated ' + fmtDay(m.updated) + ', ' + fmtTime(m.updated) : '';
     renderKpis();
+    showGoogleCalendar();
     renderCalendar();
     renderAvailability();
     renderStatusFilter();
