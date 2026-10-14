@@ -20,6 +20,19 @@
  *     team: { <request id>: { jetski, notes, updated, by } } }
  * GET ...&action=save&id=...&student=...&by=...[&jetski=yes|no][&note=...]
  *   saves to Dashboard Notes and returns { ok, id, record }
+ * GET ...&action=book&id=...&student=...&by=...&instructor=...&date=yyyy-MM-dd
+ *       &start=HH:mm&minutes=...[&phone=...][&email=...][&lesson=...]
+ *   adds the lesson to that instructor's Google Calendar (only the calendars
+ *   in DASH_CALENDARS), notes it on Dashboard Notes, and returns
+ *   { ok, id, record, booked: { instructor, when }, events: [...] }
+ * GET ...&action=move&event=...&instructor=...&to=...&date=...&start=...&minutes=...&by=...
+ * GET ...&action=unbook&event=...&instructor=...&by=...
+ *   change or delete a lesson the dashboard added; return { ok, events, ... }
+ * The main GET also returns calendars: [instructor names it can book on] and
+ * events: upcoming lessons the dashboard added
+ *   [{ event, instructor, id, student, start: 'yyyy-MM-ddTHH:mm', minutes }].
+ * Only events the dashboard created (tagged DASH_TAG) can be changed here, so
+ * nothing else on these calendars can be edited or deleted by the dashboard.
  */
 
 // ---- Settings --------------------------------------------------------------
@@ -33,6 +46,17 @@ const DASHBOARD_KEY = '';
  */
 const SHEET_ID = '';
 
+/**
+ * Google Calendars the dashboard can add lessons to, one per instructor.
+ * The account that deploys this script needs "Make changes to events"
+ * access to each one.
+ */
+const DASH_CALENDARS = {
+  Brad: '0ceee340ec4dce683454a4b150ca1fabc7fab4ad747dfbcd71f8fd66938ed6bd@group.calendar.google.com',
+  Anthony: 'info@kiteboardingstpetersburg.com',
+  Nate: 'ncc1erpf1hf6bdka7k4cp7m708@group.calendar.google.com'
+};
+
 // ---- Internals -------------------------------------------------------------
 
 const DASH_LESSONS_TAB = 'Lesson Requests';
@@ -40,6 +64,8 @@ const DASH_NOTES_TAB = 'Dashboard Notes';
 const DASH_NOTES_HEADERS = ['Request ID', 'Student', 'Jetski Needed', 'Notes', 'Updated', 'Updated By'];
 const DASH_NOTE_MAX = 2000;     // longest single note
 const DASH_CELL_MAX = 45000;    // Sheets cells hold 50,000 characters
+const DASH_TAG = 'kspDashboard'; // event tag: the request id it was booked for
+const DASH_EVENT_DAYS = 120;     // how far ahead the lesson list looks
 
 function doGet(e) {
   try {
@@ -56,11 +82,22 @@ function doGet(e) {
     if (e.parameter.action === 'save') {
       return dashJson_(dashSave_(ss, tz, e.parameter));
     }
+    if (e.parameter.action === 'book') {
+      return dashJson_(dashBook_(ss, tz, e.parameter));
+    }
+    if (e.parameter.action === 'move') {
+      return dashJson_(dashMove_(ss, tz, e.parameter));
+    }
+    if (e.parameter.action === 'unbook') {
+      return dashJson_(dashUnbook_(ss, tz, e.parameter));
+    }
     return dashJson_({
       ok: true,
       updated: Utilities.formatDate(new Date(), tz, "yyyy-MM-dd'T'HH:mm:ss"),
       lessons: dashReadLessons_(ss, tz),
-      team: dashReadTeam_(ss)
+      team: dashReadTeam_(ss),
+      calendars: Object.keys(DASH_CALENDARS).filter(function (n) { return String(DASH_CALENDARS[n]).trim(); }),
+      events: dashEvents_()
     });
   } catch (err) {
     return dashJson_({ ok: false, error: String((err && err.message) || err) });
@@ -80,6 +117,13 @@ function checkDashboard() {
   Logger.log(ss.getSheetByName(DASH_NOTES_TAB)
     ? DASH_NOTES_TAB + ': ' + Object.keys(dashReadTeam_(ss)).length + ' students with notes or a Jetski setting'
     : DASH_NOTES_TAB + ': not created yet. It appears the first time someone saves a note or flips Jetski Needed.');
+  Object.keys(DASH_CALENDARS).forEach(function (name) {
+    const id = String(DASH_CALENDARS[name]).trim();
+    if (!id) return;
+    const cal = CalendarApp.getCalendarById(id);
+    Logger.log('Calendar for ' + name + ': ' + (!cal ? 'NOT FOUND. Check the ID and that it is shared with this account.'
+      : cal.getName() + (cal.isOwnedByMe() ? '' : ' (shared with you; it needs "Make changes to events")')));
+  });
   Logger.log(String(DASHBOARD_KEY).trim() ? 'Key is set.' : 'Reminder: set DASHBOARD_KEY before deploying.');
 }
 
@@ -225,6 +269,161 @@ function dashSave_(ss, tz, p) {
     return { ok: true, id: id, record: { jetski: dashYesNo_(row[2]), notes: row[3], updated: stamp, by: by } };
   } finally {
     lock.releaseLock();
+  }
+}
+
+// ---- Add a lesson to an instructor's Google Calendar ----------------------
+
+/** The instructor name as written in DASH_CALENDARS, or ''. */
+function dashInstructor_(name) {
+  const want = String(name || '').trim().toLowerCase();
+  return Object.keys(DASH_CALENDARS).filter(function (n) {
+    return n.toLowerCase() === want && String(DASH_CALENDARS[n]).trim();
+  })[0] || '';
+}
+
+function dashCalendar_(instructor) {
+  const cal = CalendarApp.getCalendarById(String(DASH_CALENDARS[instructor]).trim());
+  if (!cal) throw new Error('Can\'t open ' + instructor + '\'s calendar. Share it with the account that runs the dashboard script.');
+  return cal;
+}
+
+/** Start/end from the date, start time and minutes the dashboard sends. */
+function dashWhen_(cal, tz, p) {
+  const date = String(p.date || '');
+  const time = String(p.start || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('Pick a date.');
+  if (!/^\d{2}:\d{2}$/.test(time)) throw new Error('Pick a start time.');
+  const minutes = Math.round(Number(p.minutes));
+  if (!(minutes >= 15 && minutes <= 12 * 60)) throw new Error('Pick a lesson length.');
+  const calTz = cal.getTimeZone() || tz;
+  const start = Utilities.parseDate(date + ' ' + time, calTz, 'yyyy-MM-dd HH:mm');
+  const end = new Date(start.getTime() + minutes * 60000);
+  const length = minutes % 60 ? minutes + ' min' : (minutes / 60) + (minutes === 60 ? ' hr' : ' hrs');
+  const label = Utilities.formatDate(start, calTz, 'EEE, MMM d') + ' at ' + Utilities.formatDate(start, calTz, 'h:mm a');
+  return { start: start, end: end, label: label, length: length };
+}
+
+/** A lesson the dashboard added, or an error for anything else. */
+function dashOwnEvent_(instructor, eventId) {
+  const event = dashCalendar_(instructor).getEventById(String(eventId || ''));
+  if (!event || !event.getTag(DASH_TAG)) {
+    throw new Error('That lesson is no longer on ' + instructor + '\'s calendar, or wasn\'t added from the dashboard. Press Refresh.');
+  }
+  return event;
+}
+
+/** Upcoming lessons the dashboard added, on every calendar, soonest first. */
+function dashEvents_() {
+  const from = new Date();
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(from.getTime() + DASH_EVENT_DAYS * 864e5);
+  const out = [];
+  Object.keys(DASH_CALENDARS).forEach(function (instructor) {
+    if (!String(DASH_CALENDARS[instructor]).trim()) return;
+    try {
+      const cal = dashCalendar_(instructor);
+      const calTz = cal.getTimeZone();
+      cal.getEvents(from, to).forEach(function (ev) {
+        const id = ev.getTag(DASH_TAG);
+        if (!id) return;
+        out.push({
+          event: ev.getId(),
+          instructor: instructor,
+          id: id,
+          student: String(ev.getTitle()).replace(/^Kite lesson:\s*/, ''),
+          start: Utilities.formatDate(ev.getStartTime(), calTz, "yyyy-MM-dd'T'HH:mm"),
+          minutes: Math.round((ev.getEndTime() - ev.getStartTime()) / 60000)
+        });
+      });
+    } catch (err) {
+      // One unreachable calendar shouldn't hide the others.
+    }
+  });
+  out.sort(function (a, b) { return a.start < b.start ? -1 : a.start > b.start ? 1 : 0; });
+  return out;
+}
+
+function dashNoteFor_(ss, tz, id, student, by, note) {
+  const saved = dashSave_(ss, tz, { id: id, student: student, by: by, note: note });
+  return saved.ok ? saved.record : null;
+}
+
+function dashBook_(ss, tz, p) {
+  try {
+    const id = dashClean_(p.id, 300);
+    const by = dashClean_(p.by, 60);
+    const student = dashClean_(p.student, 120);
+    if (!id || !student) return { ok: false, error: 'Missing student.' };
+    if (!by) return { ok: false, error: 'Enter your name before adding to the calendar.' };
+    const instructor = dashInstructor_(p.instructor);
+    if (!instructor) return { ok: false, error: 'Pick an instructor.' };
+    const cal = dashCalendar_(instructor);
+    const when = dashWhen_(cal, tz, p);
+
+    const lesson = dashClean_(p.lesson, 120);
+    const description = [
+      'Student: ' + student,
+      p.phone ? 'Phone: ' + dashClean_(p.phone, 40) : '',
+      p.email ? 'Email: ' + dashClean_(p.email, 120) : '',
+      lesson ? 'Lesson: ' + lesson : ''
+    ].filter(String).join('\n') + '\n\nAdded from the team dashboard by ' + by + '.';
+    cal.createEvent('Kite lesson: ' + student, when.start, when.end, { description: description }).setTag(DASH_TAG, id);
+
+    const record = dashNoteFor_(ss, tz, id, student, by,
+      'Added to ' + instructor + '\'s calendar: ' + when.label + ' (' + when.length + ').');
+    return { ok: true, id: id, record: record, booked: { instructor: instructor, when: when.label }, events: dashEvents_() };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || err) };
+  }
+}
+
+/** Changes the time, length or instructor of a lesson the dashboard added. */
+function dashMove_(ss, tz, p) {
+  try {
+    const by = dashClean_(p.by, 60);
+    if (!by) return { ok: false, error: 'Enter your name before changing a lesson.' };
+    const from = dashInstructor_(p.instructor);
+    const to = dashInstructor_(p.to || p.instructor);
+    if (!from || !to) return { ok: false, error: 'Pick an instructor.' };
+    const event = dashOwnEvent_(from, p.event);
+    const id = event.getTag(DASH_TAG);
+    const student = String(event.getTitle()).replace(/^Kite lesson:\s*/, '');
+    const cal = dashCalendar_(to);
+    const when = dashWhen_(cal, tz, p);
+
+    if (to === from) {
+      event.setTime(when.start, when.end);
+    } else {
+      cal.createEvent(event.getTitle(), when.start, when.end, { description: event.getDescription() }).setTag(DASH_TAG, id);
+      event.deleteEvent();
+    }
+    const record = dashNoteFor_(ss, tz, id, student, by,
+      'Lesson changed: now ' + when.label + ' (' + when.length + ') with ' + to + '.');
+    return { ok: true, id: id, record: record, moved: { instructor: to, when: when.label }, events: dashEvents_() };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || err) };
+  }
+}
+
+/** Deletes a lesson the dashboard added. */
+function dashUnbook_(ss, tz, p) {
+  try {
+    const by = dashClean_(p.by, 60);
+    if (!by) return { ok: false, error: 'Enter your name before deleting a lesson.' };
+    const instructor = dashInstructor_(p.instructor);
+    if (!instructor) return { ok: false, error: 'Unknown instructor.' };
+    const event = dashOwnEvent_(instructor, p.event);
+    const id = event.getTag(DASH_TAG);
+    const student = String(event.getTitle()).replace(/^Kite lesson:\s*/, '');
+    const calTz = dashCalendar_(instructor).getTimeZone() || tz;
+    const label = Utilities.formatDate(event.getStartTime(), calTz, 'EEE, MMM d') + ' at ' +
+      Utilities.formatDate(event.getStartTime(), calTz, 'h:mm a');
+    event.deleteEvent();
+    const record = dashNoteFor_(ss, tz, id, student, by, 'Lesson deleted from ' + instructor + '\'s calendar (was ' + label + ').');
+    return { ok: true, id: id, record: record, events: dashEvents_() };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || err) };
   }
 }
 

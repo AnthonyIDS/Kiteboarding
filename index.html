@@ -227,6 +227,30 @@
   .team-msg:empty { display: none; }
   .team-msg.error { color: var(--danger); }
 
+  /* Add to calendar */
+  .book { margin-top: 10px; }
+  .book-form { margin-top: 8px; padding: 10px; border-radius: 10px; background: var(--surface-2); }
+  .book-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .book-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; font-weight: 500; color: var(--muted); min-width: 0; }
+  .book-grid .field { height: 34px; padding: 0 8px; min-width: 0; }
+  .book-form .note-actions .btn-primary { flex: 1; justify-content: center; }
+
+  /* Upcoming lessons (booked from the dashboard) */
+  .ev-list { list-style: none; margin: 0; padding: 0; }
+  .ev-list > li { padding: 10px 0; border-top: 1px solid var(--border); }
+  .ev-list > li:first-child { border-top: 0; }
+  .ev-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .ev-when { flex: none; width: 190px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .ev-who { flex: 1; min-width: 160px; overflow-wrap: anywhere; }
+  .ev-who .muted { color: var(--muted); font-size: 13px; }
+  .ev-actions { display: flex; gap: 8px; }
+  .ev-actions .btn { height: 32px; padding: 0 12px; }
+  .btn-danger { color: var(--danger); }
+  .ev-list .book-form { margin-top: 10px; }
+  .ev-name { display: flex; align-items: center; gap: 8px; }
+  .ev-name .field { height: 34px; width: 180px; }
+  #ev-msg { padding: 0 18px 12px; }
+
   /* Calendar */
   .cal-nav { display: flex; align-items: center; gap: 8px; }
   .cal-title { font-size: 15px; font-weight: 600; min-width: 130px; text-align: center; }
@@ -347,6 +371,9 @@
     .legend { padding: 0 14px 10px; }
     .avail-grid { grid-template-columns: minmax(0, 1fr); }
     .gcal iframe { height: 560px; }
+    .ev-when { width: 100%; }
+    .ev-name .field { width: 140px; }
+    #ev-msg { padding: 0 14px 10px; }
     .detail .when { width: 78px; }
     .brand h1 { font-size: 17px; }
     .actions { width: 100%; }
@@ -449,6 +476,16 @@
     </div>
   </section>
 
+  <section class="panel" aria-labelledby="ev-h" id="ev-panel" hidden>
+    <div class="panel-head">
+      <h2 id="ev-h">Upcoming lessons<span class="count" id="ev-count"></span></h2>
+      <label class="ev-name"><span class="brand-sub">Your name</span><input class="field by" id="ev-by" list="team-names" maxlength="60" autocomplete="off"></label>
+    </div>
+    <div class="cal-note">Lessons added with <b>Add to calendar</b>. Change or delete them here. Anything else on the calendars is changed in Google Calendar.</div>
+    <div class="team-msg" id="ev-msg" role="status"></div>
+    <div class="panel-body"><ul class="ev-list" id="ev-list"></ul></div>
+  </section>
+
   <section class="panel" aria-labelledby="avail-h" id="avail-panel" hidden>
     <div class="panel-head"><h2 id="avail-h">Student availability<span class="count" id="avail-count"></span></h2></div>
     <div class="cal-note" id="avail-note"></div>
@@ -507,7 +544,7 @@
   const DEMO = params.has('demo') || !API_READY;
 
   const $ = (id) => document.getElementById(id);
-  const state = { data: null, model: null, view: null, selected: null, loading: false, drafts: {}, msgs: {}, saving: {} };
+  const state = { data: null, model: null, view: null, selected: null, loading: false, drafts: {}, msgs: {}, saving: {}, book: {}, evEdit: {}, evBusy: null, demoEvents: null };
   let memKey = '';
 
   // ---------- Storage (every call guarded) ----------
@@ -782,6 +819,10 @@
     return {
       // Notes and Jetski need the updated Apps Script, which sends "team".
       teamReady: DEMO || !!data.team,
+      // Instructors whose Google Calendar the script can add lessons to.
+      calendars: DEMO ? Object.keys(GOOGLE_CALENDARS) : (Array.isArray(data.calendars) ? data.calendars : []),
+      // Upcoming lessons the dashboard added to the calendars.
+      events: Array.isArray(data.events) ? data.events : [],
       byId: lessons.reduce((o, l) => { o[l.id] = l; return o; }, {}),
       days,
       weekly,
@@ -869,8 +910,9 @@
   const instKey = (n) => String(n).trim().split(/\s+/)[0].toLowerCase();
   // Class list that colors something by the lesson's instructor.
   function icClass(l) {
-    const i = l.instructor && state.model.instructors[instKey(l.instructor)];
-    return 'ic' + (i ? ' ic-' + i.color : '');
+    const k = l.instructor ? instKey(l.instructor) : '';
+    const c = k && ((state.model.instructors[k] && state.model.instructors[k].color) || INSTRUCTOR_COLORS[k]);
+    return 'ic' + (c ? ' ic-' + c : '');
   }
   function instLabel(l) {
     return l.instructor ? '<span class="inst ' + icClass(l) + '"><i class="dot"></i>' + esc(l.instructor) + '</span>' : '';
@@ -913,6 +955,7 @@
     renderKpis();
     showGoogleCalendar();
     renderCalendar();
+    renderEvents();
     renderAvailability();
     renderStatusFilter();
     renderLessons();
@@ -1003,7 +1046,81 @@
       esc(myName) + '"' + off + '><button class="btn btn-primary" type="submit"' + off + '>' + (busy ? 'Saving…' : 'Add note') + '</button></div>' +
       '</form>' +
       '<div class="team-msg' + (msg && msg.error ? ' error' : '') + '" role="status">' + esc(msg ? msg.text : '') + '</div>' +
+      bookHtml(l) +
       '</div>';
+  }
+
+  // "Add to calendar": books the lesson on an instructor's Google Calendar.
+  const BOOK_LENGTHS = [[60, '1 hr'], [90, '1.5 hrs'], [120, '2 hrs'], [180, '3 hrs'], [240, '4 hrs']];
+  function bookDefaults(l) {
+    const cals = state.model.calendars;
+    const inst = cals.find((n) => instKey(n) === instKey(l.instructor || '')) || '';
+    const d = parseDate(l.date);
+    const t = lessonTime(l.date, l.time);
+    const hrs = String(l.type || '').match(/(\d+(?:\.\d+)?)\s*(?:hrs?|hours?)\b/i);
+    const mins = hrs ? Math.round(+hrs[1] * 60) : 120;
+    return {
+      open: true,
+      instructor: inst,
+      date: d && startOfDay(d) >= startOfDay(new Date()) ? dayKey(d) : '',
+      time: t.exact ? pad(Math.floor(t.mins / 60)) + ':' + pad(t.mins % 60) : '09:00',
+      mins: String(BOOK_LENGTHS.some((x) => x[0] === mins) ? mins : 120)
+    };
+  }
+  function bookHtml(l) {
+    const cals = state.model.calendars;
+    if (!cals.length || !isOpen(l.status)) return '';
+    const b = state.book[l.id];
+    const msg = b && b.msg;
+    const msgHtml = msg ? '<div class="team-msg' + (msg.error ? ' error' : '') + '" role="status">' + esc(msg.text) + '</div>' : '';
+    if (!b || !b.open) {
+      return '<div class="book"><button class="btn" type="button" data-book="open">Add to calendar</button>' + msgHtml + '</div>';
+    }
+    const off = b.busy ? ' disabled' : '';
+    const opt = (v, label, cur) => '<option value="' + esc(v) + '"' + (String(v) === String(cur) ? ' selected' : '') + '>' + esc(label) + '</option>';
+    return '<div class="book"><form class="book-form">' +
+      '<div class="book-grid">' +
+      '<label>Instructor<select class="field" name="instructor"' + off + '>' + opt('', 'Pick one', b.instructor) +
+        cals.map((n) => opt(n, n, b.instructor)).join('') + '</select></label>' +
+      '<label>Length<select class="field" name="mins"' + off + '>' + BOOK_LENGTHS.map((x) => opt(x[0], x[1], b.mins)).join('') + '</select></label>' +
+      '<label>Date<input class="field" type="date" name="date" value="' + esc(b.date) + '"' + off + '></label>' +
+      '<label>Start time<input class="field" type="time" name="time" step="900" value="' + esc(b.time) + '"' + off + '></label>' +
+      '</div>' +
+      '<div class="note-actions"><button class="btn btn-primary" type="submit"' + off + '>' + (b.busy ? 'Adding…' : 'Add to calendar') + '</button>' +
+      '<button class="btn" type="button" data-book="cancel"' + off + '>Cancel</button></div>' +
+      '</form>' + msgHtml + '</div>';
+  }
+
+  async function bookLesson(id) {
+    const l = state.model && state.model.byId[id];
+    const b = state.book[id];
+    if (!l || !b || b.busy) return;
+    const fail = (text) => { b.msg = { text, error: true }; renderKeepFocus(); };
+    if (!b.instructor) return fail('Pick an instructor.');
+    if (!b.date) return fail('Pick a date.');
+    if (!b.time) return fail('Pick a start time.');
+    if (!myName.trim()) return fail('Type your name in the box next to Add note first, so the team knows who booked it.');
+    b.busy = true;
+    b.msg = { text: 'Adding to ' + b.instructor + '’s calendar…' };
+    renderKeepFocus();
+    try {
+      let json;
+      if (DEMO) {
+        json = demoCalendar('book', { id: l.id, student: l.name, instructor: b.instructor, date: b.date, start: b.time, minutes: b.mins });
+      } else {
+        json = await calendarCall({ action: 'book', id: l.id, student: l.name || 'Student', by: myName.trim(),
+          instructor: b.instructor, date: b.date, start: b.time, minutes: b.mins, phone: l.phone, email: l.email, lesson: l.type });
+        if (!json.booked) throw new Error('Adding to the calendar needs the updated Apps Script. See the README.');
+        if (json.record) l.teamNotes = json.record.notes ? String(json.record.notes) : l.teamNotes;
+      }
+      if (Array.isArray(json.events)) state.model.events = json.events;
+      state.book[id] = { msg: { text: 'Added to ' + json.booked.instructor + '’s calendar: ' + json.booked.when + '.' } };
+      reloadGoogleCalendar();
+    } catch (err) {
+      b.busy = false;
+      b.msg = { text: err.message || 'Couldn’t add it to the calendar.', error: true };
+    }
+    if (state.model && state.model.byId[id] === l) renderKeepFocus();
   }
 
   // Saves through the same web app: GET ...&action=save. Using doGet keeps
@@ -1067,6 +1184,159 @@
       if (state.model && state.model.byId[id] === l) renderKeepFocus();
     }
   }
+
+  // Calendar writes go through the same web app as notes (GET ...&action=...).
+  async function calendarCall(params) {
+    const q = new URLSearchParams(Object.assign({ key: getKey() }, params));
+    const res = await fetch(API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + q.toString(), { cache: 'no-store' });
+    let json;
+    try { json = JSON.parse(await res.text()); } catch (e) {
+      throw new Error('Couldn’t reach the calendar. Check your connection, then look in Google Calendar before trying again.');
+    }
+    if (json.error === 'unauthorized') throw new Error('The access key no longer works. Click Lock and enter the new key.');
+    if (!json.ok) throw new Error(json.error || 'Couldn’t change the calendar.');
+    return json;
+  }
+  function reloadGoogleCalendar() {
+    const f = document.querySelector('#gcal iframe');
+    if (f) f.src = f.src; // show the change
+  }
+  const whenLabel = (d) => fmt(d, { weekday: 'short', month: 'short', day: 'numeric' }) + ' at ' + fmtTime(d);
+  const lengthLabel = (mins) => mins % 60 ? mins + ' min' : (mins / 60) + (mins === 60 ? ' hr' : ' hrs');
+
+  // Demo mode keeps its "calendar" in memory.
+  function demoCalendar(action, p) {
+    const list = state.demoEvents;
+    const d = p.date ? parseDate(p.date + 'T' + p.start) : null;
+    const start = d ? dayKey(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) : '';
+    if (action === 'book') {
+      list.push({ event: 'demo-' + Date.now(), instructor: p.instructor, id: p.id, student: p.student, start, minutes: +p.minutes });
+    } else {
+      const i = list.findIndex((e) => e.event === p.event);
+      if (i < 0) throw new Error('That lesson is no longer on the calendar. Press Refresh.');
+      if (action === 'unbook') list.splice(i, 1);
+      else Object.assign(list[i], { instructor: p.to, start, minutes: +p.minutes });
+    }
+    list.sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+    return { ok: true, events: list.slice(), booked: d && { instructor: p.instructor, when: whenLabel(d) }, moved: d && { instructor: p.to, when: whenLabel(d) } };
+  }
+
+  // ---------- Upcoming lessons ----------
+  function renderEvents() {
+    const m = state.model;
+    const show = m.calendars.length > 0;
+    $('ev-panel').hidden = !show;
+    if (!show) return;
+    if (document.activeElement !== $('ev-by')) $('ev-by').value = myName;
+    const today = startOfDay(new Date());
+    const list = m.events.filter((e) => { const d = parseDate(e.start); return d && d >= today; });
+    $('ev-count').textContent = String(list.length);
+    const msg = state.evMsg;
+    $('ev-msg').textContent = msg ? msg.text : '';
+    $('ev-msg').className = 'team-msg' + (msg && msg.error ? ' error' : '');
+    if (!list.length) {
+      $('ev-list').innerHTML = '<li class="empty">No upcoming lessons yet. Use <b>Add to calendar</b> on a request below.</li>';
+      return;
+    }
+    const opt = (v, label, cur) => '<option value="' + esc(v) + '"' + (String(v) === String(cur) ? ' selected' : '') + '>' + esc(label) + '</option>';
+    $('ev-list').innerHTML = list.map((e) => {
+      const d = parseDate(e.start);
+      const busy = state.evBusy === e.event;
+      const off = state.evBusy ? ' disabled' : '';
+      const ed = state.evEdit[e.event];
+      const l = m.byId[e.id];
+      const who = { instructor: e.instructor };
+      let html = '<li data-event="' + esc(e.event) + '"><div class="ev-row">' +
+        '<span class="ev-when">' + esc(whenLabel(d)) + '</span>' +
+        '<span class="ev-who"><strong>' + esc(e.student || (l && l.name) || 'Lesson') + '</strong>' +
+        '<div class="muted"><span class="inst ' + icClass(who) + '"><i class="dot"></i>' + esc(e.instructor) + '</span> · ' + esc(lengthLabel(e.minutes)) +
+        (l && l.phone ? ' · ' + phoneLink(l.phone) : '') + '</div></span>' +
+        '<span class="ev-actions">' + (ed ? '' : '<button class="btn" type="button" data-ev="edit"' + off + '>Edit</button>') +
+        '<button class="btn btn-danger" type="button" data-ev="delete"' + off + '>' + (busy && !ed ? 'Deleting…' : 'Delete') + '</button></span></div>';
+      if (ed) {
+        html += '<form class="book-form ev-form"><div class="book-grid">' +
+          '<label>Instructor<select class="field" name="instructor"' + off + '>' + m.calendars.map((n) => opt(n, n, ed.instructor)).join('') + '</select></label>' +
+          '<label>Length<select class="field" name="mins"' + off + '>' +
+            (BOOK_LENGTHS.some((x) => String(x[0]) === String(ed.mins)) ? '' : opt(ed.mins, lengthLabel(+ed.mins), ed.mins)) +
+            BOOK_LENGTHS.map((x) => opt(x[0], x[1], ed.mins)).join('') + '</select></label>' +
+          '<label>Date<input class="field" type="date" name="date" value="' + esc(ed.date) + '"' + off + '></label>' +
+          '<label>Start time<input class="field" type="time" name="time" step="900" value="' + esc(ed.time) + '"' + off + '></label>' +
+          '</div><div class="note-actions"><button class="btn btn-primary" type="submit"' + off + '>' + (busy ? 'Saving…' : 'Save changes') + '</button>' +
+          '<button class="btn" type="button" data-ev="cancel"' + off + '>Cancel</button></div></form>';
+      }
+      return html + '</li>';
+    }).join('');
+  }
+
+  async function changeEvent(eventId, action) {
+    const m = state.model;
+    const e = m.events.find((x) => x.event === eventId);
+    if (!e || state.evBusy) return;
+    const ed = state.evEdit[eventId];
+    const fail = (text) => { state.evMsg = { text, error: true }; renderEvents(); };
+    if (!myName.trim()) { fail('Type your name in the box at the top of Upcoming lessons first.'); $('ev-by').focus(); return; }
+    if (action === 'move' && (!ed.date || !ed.time)) return fail('Pick a date and start time.');
+    const what = (e.student || 'this') + '’s lesson on ' + whenLabel(parseDate(e.start)) + ' from ' + e.instructor + '’s calendar';
+    if (action === 'unbook' && !window.confirm('Delete ' + what + '?')) return;
+    state.evBusy = eventId;
+    state.evMsg = { text: action === 'unbook' ? 'Deleting…' : 'Saving…' };
+    renderEvents();
+    try {
+      const p = { event: eventId, instructor: e.instructor };
+      if (action === 'move') Object.assign(p, { to: ed.instructor, date: ed.date, start: ed.time, minutes: ed.mins });
+      const json = DEMO ? demoCalendar(action, p) : await calendarCall(Object.assign({ action, by: myName.trim() }, p));
+      if (!Array.isArray(json.events)) throw new Error('Changing lessons needs the updated Apps Script. See the README.');
+      m.events = json.events;
+      const l = m.byId[e.id];
+      if (l && json.record) l.teamNotes = json.record.notes ? String(json.record.notes) : l.teamNotes;
+      delete state.evEdit[eventId];
+      state.evMsg = { text: action === 'unbook' ? 'Deleted ' + what + '.'
+        : 'Saved: ' + (e.student || 'Lesson') + ' is now ' + json.moved.when + ' with ' + json.moved.instructor + '.' };
+      reloadGoogleCalendar();
+    } catch (err) {
+      state.evMsg = { text: err.message || 'Couldn’t change the calendar.', error: true };
+    } finally {
+      state.evBusy = null;
+      if (state.model === m) renderKeepFocus();
+    }
+  }
+
+  $('ev-list').addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-ev]');
+    const li = btn && btn.closest('[data-event]');
+    if (!li || !state.model || btn.disabled) return;
+    const id = li.dataset.event;
+    const e = state.model.events.find((x) => x.event === id);
+    if (!e) return;
+    if (btn.dataset.ev === 'edit') {
+      const d = parseDate(e.start);
+      state.evEdit[id] = { instructor: e.instructor, mins: String(e.minutes), date: dayKey(d), time: pad(d.getHours()) + ':' + pad(d.getMinutes()) };
+      state.evMsg = null;
+      renderEvents();
+    } else if (btn.dataset.ev === 'cancel') {
+      delete state.evEdit[id];
+      renderEvents();
+    } else if (btn.dataset.ev === 'delete') {
+      changeEvent(id, 'unbook');
+    }
+  });
+  const evField = (ev) => {
+    const li = ev.target.closest('[data-event]');
+    const ed = li && state.evEdit[li.dataset.event];
+    if (ed && ev.target.name) ed[ev.target.name] = ev.target.value;
+  };
+  $('ev-list').addEventListener('input', evField);
+  $('ev-list').addEventListener('change', evField);
+  $('ev-list').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const li = ev.target.closest('[data-event]');
+    if (li) changeEvent(li.dataset.event, 'move');
+  });
+  $('ev-by').addEventListener('input', (ev) => {
+    myName = ev.target.value;
+    nameStore.set(myName.trim());
+    document.querySelectorAll('.note-form .by').forEach((f) => { f.value = myName; });
+  });
 
   // ---------- Calendar ----------
   const MAX_CHIPS = 3;
@@ -1243,6 +1513,10 @@
   function setData(data) {
     state.data = data;
     state.model = buildModel(data);
+    if (DEMO) {
+      if (!state.demoEvents) state.demoEvents = demoEvents(state.model.lessons);
+      state.model.events = state.demoEvents.slice();
+    }
     $('gate').hidden = true;
     $('app').hidden = false;
     render();
@@ -1292,6 +1566,16 @@
   }
 
   // ---------- Demo data ----------
+  function demoEvents(lessons) {
+    const t = startOfDay(new Date());
+    const at = (n, h, mi) => { const d = addDays(t, n); return dayKey(d) + 'T' + pad(h) + ':' + pad(mi); };
+    const idOf = (name) => { const l = lessons.find((x) => x.name === name); return l ? l.id : ''; };
+    return [
+      { event: 'demo-1', instructor: 'Brad', id: idOf('Jake Thornton'), student: 'Jake Thornton', start: at(1, 9, 0), minutes: 120 },
+      { event: 'demo-2', instructor: 'Anthony', id: idOf('Noah Fischer'), student: 'Noah Fischer', start: at(6, 17, 0), minutes: 90 }
+    ];
+  }
+
   function demoData() {
     const now = new Date();
     const t = startOfDay(now);
@@ -1372,13 +1656,33 @@
   });
   const teamOf = (el) => { const box = el.closest('.team'); return box ? box.dataset.id : null; };
   $('lessons').addEventListener('click', (e) => {
+    const bk = e.target.closest('[data-book]');
+    const bid = bk && teamOf(bk);
+    if (bid && state.model.byId[bid]) {
+      if (bk.dataset.book === 'open') state.book[bid] = bookDefaults(state.model.byId[bid]);
+      else delete state.book[bid];
+      renderKeepFocus();
+      if (bk.dataset.book === 'open') {
+        const box = Array.prototype.find.call(document.querySelectorAll('#lessons .team'), (x) => x.dataset.id === bid);
+        const first = box && box.querySelector('.book-form [name="' + (state.book[bid].instructor ? 'date' : 'instructor') + '"]');
+        if (first) first.focus();
+      }
+      return;
+    }
     const btn = e.target.closest('[data-jetski]');
     const id = btn && teamOf(btn);
     if (!id || btn.disabled) return;
     const want = btn.dataset.jetski === 'yes';
     if (state.model.byId[id] && state.model.byId[id].jetski !== want) updateTeam(id, { jetski: want });
   });
+  const bookField = (e) => {
+    const id = e.target.closest('.book-form') && teamOf(e.target);
+    if (id && state.book[id]) state.book[id][e.target.name] = e.target.value;
+    return !!id;
+  };
+  $('lessons').addEventListener('change', bookField);
   $('lessons').addEventListener('input', (e) => {
+    if (bookField(e)) return;
     const id = teamOf(e.target);
     if (!id) return;
     if (e.target.name === 'note') state.drafts[id] = e.target.value;
@@ -1386,12 +1690,14 @@
       myName = e.target.value;
       nameStore.set(myName.trim());
       document.querySelectorAll('.note-form .by').forEach((f) => { if (f !== e.target) f.value = myName; });
+      $('ev-by').value = myName;
     }
   });
   $('lessons').addEventListener('submit', (e) => {
     e.preventDefault();
     const id = teamOf(e.target);
     if (!id) return;
+    if (e.target.classList.contains('book-form')) { bookLesson(id); return; }
     const note = e.target.elements.note.value.trim();
     if (!note) { e.target.elements.note.focus(); return; }
     if (!myName.trim()) {

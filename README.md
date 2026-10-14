@@ -69,6 +69,7 @@ On first visit, each team member enters the access key once. The browser remembe
 - **Instructor colors**: if the sheet has an **Instructor** column, each student is colored by their instructor on the calendar, in the availability lists and on the request cards. Brad is green, Anthony is blue and Nate is purple. Other instructors get the next free color automatically. To change a color, edit `INSTRUCTOR_COLORS` near the top of the script in `index.html` (choices: green, blue, purple, orange, pink, teal). Students with no instructor yet are gray.
 - **Lesson requests** are listed newest first. Every form field appears automatically, so new form fields show up without any changes here. Search, or filter by status.
 - **Jetski Needed and team notes**: every request card has a **Jetski Needed** No/Yes switch and a box to leave a note for the team. Type your name once next to **Add note**; the browser remembers it. When Jetski Needed is Yes, an orange **Jetski needed** badge shows on the card, in the calendar's day list and in the student availability lists, for everyone. Notes show newest first with who wrote them and when. Others see a change after they press **Refresh**. Everything is stored on the **Dashboard Notes** tab (one row per student), so you can read it in the sheet too. Don't rename that tab or its **Request ID** column, or the notes stop matching their students.
+- **Add to calendar**: every open request card has an **Add to calendar** button. Pick the instructor, date, start time and length, then click **Add to calendar**. The lesson goes on that instructor's Google Calendar as "Kite lesson: (student)", with the student's phone, email and lesson type in the description, and a note saying who booked it is added to the card. Lessons added this way appear under **Upcoming lessons**, where **Edit** changes the date, time, length or instructor, and **Delete** removes the lesson after you confirm. Each change is noted on the student's card. Only lessons added from the dashboard can be changed there; anything else on the calendars is changed in Google Calendar itself. The calendars are listed in `DASH_CALENDARS` in `dashboard-api.gs`. The account that deploys the script needs **Make changes to events** access to each one: the instructor opens their calendar's settings, goes to **Share with specific people**, adds that account and picks **Make changes to events**. Running **checkDashboard** shows whether each calendar can be reached.
 - You can still put notes in the sheet's own **Notes** column and update **Status** as you go (for example New → Contacted → Booked).
 - Press **Refresh** to see new submissions.
 
@@ -79,7 +80,7 @@ On first visit, each team member enters the access key once. The browser remembe
 3. Before replacing anything, copy your two settings lines, `DASHBOARD_KEY` and `SHEET_ID`, somewhere safe (a note on your phone is fine).
 4. Select everything in the file (**Ctrl+A**, or **Cmd+A** on a Mac), then paste (**Ctrl+V** / **Cmd+V**).
 5. Put your `DASHBOARD_KEY` and `SHEET_ID` values back in those two lines, then click **Save**.
-6. Choose **checkDashboard** in the toolbar and click **Run**. If Google asks for permission again, approve it.
+6. Choose **checkDashboard** in the toolbar and click **Run**. If Google asks for permission again, approve it. Adding lessons asks for permission to manage your calendars the first time.
 7. Click **Deploy → Manage deployments → Edit** (pencil), set **Version** to **New version**, and click **Deploy**. The URL stays the same.
 8. Open the dashboard and press **Refresh**.
 
@@ -87,7 +88,7 @@ On first visit, each team member enters the access key once. The browser remembe
 
 The access key only keeps casual visitors out. It is **not** strong security:
 
-- Anyone with the key can read every lesson request, including names, phone numbers and emails, and can add team notes and change Jetski Needed. The key is stored in each team member's browser.
+- Anyone with the key can read every lesson request, including names, phone numbers and emails, and can add team notes, change Jetski Needed and add lessons to the instructors' calendars. The key is stored in each team member's browser.
 - The page carries `noindex`, so search engines shouldn't list it. The page itself is public, though. Only the data needs the key.
 - **Rotate the key whenever someone leaves the team.** Change `DASHBOARD_KEY` in Apps Script, deploy a new version (step 3), and share the new key. Old keys stop working immediately.
 - Don't share the key in public channels, and never commit it to this repository.
