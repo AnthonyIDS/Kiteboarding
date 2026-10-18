@@ -28,6 +28,14 @@
  * GET ...&action=move&event=...&instructor=...&to=...&date=...&start=...&minutes=...&by=...
  * GET ...&action=unbook&event=...&instructor=...&by=...
  *   change or delete a lesson the dashboard added; return { ok, events, ... }
+ * GET ...&action=marketing returns the marketing tab for marketing.html
+ *   { ok, updated, marketing: { headers, rows, tab, file },
+ *     done: { <row id>: { done, updated, by } } }
+ *   It only reads that tab; nothing on it is ever changed. The Completed
+ *   switches are saved on their own tab, "Marketing Completed", in the
+ *   Lesson Requests spreadsheet, created the first time someone flips one.
+ * GET ...&action=mark&id=...&item=...&done=yes|no[&by=...]
+ *   saves one Completed switch and returns { ok, id, record }
  * The main GET also returns calendars: [instructor names it can book on] and
  * events: upcoming lessons the dashboard added
  *   [{ event, instructor, id, student, start: 'yyyy-MM-ddTHH:mm', minutes }].
@@ -47,6 +55,19 @@ const DASHBOARD_KEY = '';
 const SHEET_ID = '';
 
 /**
+ * ID of the marketing spreadsheet, if it's its own file: the long part of
+ * its URL between /d/ and /edit. Leave blank if the marketing tab is in the
+ * same spreadsheet as Lesson Requests.
+ */
+const MARKETING_SHEET_ID = '';
+
+/**
+ * Name of the tab the marketing dashboard reads. If MARKETING_SHEET_ID is
+ * set and no tab has this name, the first tab of that spreadsheet is used.
+ */
+const MARKETING_TAB = '2025/ 26 KSP - Marketing';
+
+/**
  * Google Calendars the dashboard can add lessons to, one per instructor.
  * The account that deploys this script needs "Make changes to events"
  * access to each one.
@@ -62,6 +83,8 @@ const DASH_CALENDARS = {
 const DASH_LESSONS_TAB = 'Lesson Requests';
 const DASH_NOTES_TAB = 'Dashboard Notes';
 const DASH_NOTES_HEADERS = ['Request ID', 'Student', 'Jetski Needed', 'Notes', 'Updated', 'Updated By'];
+const DASH_DONE_TAB = 'Marketing Completed';
+const DASH_DONE_HEADERS = ['Row ID', 'Item', 'Completed', 'Updated', 'Updated By'];
 const DASH_NOTE_MAX = 2000;     // longest single note
 const DASH_CELL_MAX = 45000;    // Sheets cells hold 50,000 characters
 const DASH_TAG = 'kspDashboard'; // event tag: the request id it was booked for
@@ -79,6 +102,17 @@ function doGet(e) {
 
     const ss = dashSpreadsheet_();
     const tz = ss.getSpreadsheetTimeZone();
+    if (e.parameter.action === 'marketing') {
+      return dashJson_({
+        ok: true,
+        updated: Utilities.formatDate(new Date(), tz, "yyyy-MM-dd'T'HH:mm:ss"),
+        marketing: dashReadMarketing_(ss),
+        done: dashReadDone_(ss)
+      });
+    }
+    if (e.parameter.action === 'mark') {
+      return dashJson_(dashMark_(ss, tz, e.parameter));
+    }
     if (e.parameter.action === 'save') {
       return dashJson_(dashSave_(ss, tz, e.parameter));
     }
@@ -114,6 +148,9 @@ function checkDashboard() {
   const lessons = dashReadLessons_(ss, ss.getSpreadsheetTimeZone());
   Logger.log('Spreadsheet: ' + ss.getName());
   Logger.log('Lesson Requests: ' + (lessons.error ? 'ERROR: ' + lessons.error : lessons.rows.length + ' rows'));
+  const marketing = dashReadMarketing_(ss);
+  Logger.log('Marketing' + (marketing.tab ? ' (tab "' + marketing.tab + '")' : '') + ': ' + (marketing.error ? 'ERROR: ' + marketing.error
+    : marketing.rows.length + ' rows, columns: ' + marketing.headers.join(', ')));
   Logger.log(ss.getSheetByName(DASH_NOTES_TAB)
     ? DASH_NOTES_TAB + ': ' + Object.keys(dashReadTeam_(ss)).length + ' students with notes or a Jetski setting'
     : DASH_NOTES_TAB + ': not created yet. It appears the first time someone saves a note or flips Jetski Needed.');
@@ -150,8 +187,57 @@ function dashReadLessons_(ss, tz) {
   return dashReadSheet_(sheet, tz);
 }
 
-/** Reads a tab generically: the header row gives the keys, blank rows are skipped. */
-function dashReadSheet_(sheet, tz) {
+/** The marketing tab, from MARKETING_SHEET_ID or the main spreadsheet. Read only. */
+function dashReadMarketing_(ss) {
+  const tab = String(MARKETING_TAB).trim();
+  let book = ss;
+  const id = String(MARKETING_SHEET_ID).trim();
+  if (id) {
+    try {
+      book = SpreadsheetApp.openById(id);
+    } catch (err) {
+      return { headers: [], rows: [], error: 'Could not open the spreadsheet in MARKETING_SHEET_ID. Check the ID, then run checkDashboard to grant access.' };
+    }
+  }
+  const squash = function (s) { return String(s).toLowerCase().replace(/\s+/g, ''); };
+  const sheets = book.getSheets();
+  let sheet = book.getSheetByName(tab) ||
+    sheets.filter(function (sh) { return squash(sh.getName()) === squash(tab); })[0];
+  if (!sheet && id) sheet = sheets[0];
+  if (!sheet) {
+    return { headers: [], rows: [], error: 'No "' + tab + '" tab in "' + book.getName() + '". Its tabs are: ' +
+      sheets.map(function (sh) { return sh.getName(); }).join(', ') + '. Check MARKETING_TAB in dashboard-api.gs' };
+  }
+  const out = dashReadSheet_(sheet, book.getSpreadsheetTimeZone(), dashHeaderRow_(sheet));
+  out.tab = sheet.getName();
+  out.file = book.getName();
+  return out;
+}
+
+/**
+ * Index of the header row: the first of the top 10 rows that is at least
+ * half as full as the fullest, so a title row above the headers is skipped.
+ */
+function dashHeaderRow_(sheet) {
+  const rows = Math.min(10, sheet.getLastRow());
+  const cols = sheet.getLastColumn();
+  if (rows < 1 || cols < 1) return 0;
+  const counts = sheet.getRange(1, 1, rows, cols).getDisplayValues().map(function (r) {
+    return r.filter(function (v) { return String(v).trim(); }).length;
+  });
+  const most = Math.max.apply(null, counts);
+  for (let i = 0; i < counts.length; i++) {
+    if (counts[i] >= Math.max(2, most / 2)) return i;
+  }
+  return 0;
+}
+
+/**
+ * Reads a tab generically: the header row (the first row unless headerRow
+ * says otherwise) gives the keys, blank rows are skipped.
+ */
+function dashReadSheet_(sheet, tz, headerRow) {
+  const head = headerRow || 0;
   const out = { headers: [], rows: [] };
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
@@ -164,7 +250,7 @@ function dashReadSheet_(sheet, tz) {
   // Columns with a header. Duplicate headers get " (2)", " (3)", ...
   const cols = [];
   const seen = {};
-  values[0].forEach(function (h, i) {
+  values[head].forEach(function (h, i) {
     const base = String(h).trim();
     if (!base) return;
     let name = base;
@@ -175,7 +261,7 @@ function dashReadSheet_(sheet, tz) {
   });
   out.headers = cols.map(function (c) { return c.name; });
 
-  for (let r = 1; r < values.length; r++) {
+  for (let r = head + 1; r < values.length; r++) {
     const row = values[r];
     const blank = cols.every(function (c) {
       const v = row[c.index];
@@ -267,6 +353,60 @@ function dashSave_(ss, tz, p) {
     target.setValues([row.map(function (v) { return v instanceof Date ? v : dashText_(v); })]).setWrap(true);
     target.getCell(1, 5).setNumberFormat('mmm d, h:mm am/pm');
     return { ok: true, id: id, record: { jetski: dashYesNo_(row[2]), notes: row[3], updated: stamp, by: by } };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ---- Marketing "Completed" switches (the "Marketing Completed" tab) -------
+
+/** { <row id>: { done: true|false|null, updated, by } } */
+function dashReadDone_(ss) {
+  const out = {};
+  const sheet = ss.getSheetByName(DASH_DONE_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, DASH_DONE_HEADERS.length).getDisplayValues().forEach(function (r) {
+    const id = String(r[0]).trim();
+    if (id) out[id] = { done: dashYesNo_(r[2]), updated: r[3], by: r[4] };
+  });
+  return out;
+}
+
+/** Saves one marketing row's Completed switch. */
+function dashMark_(ss, tz, p) {
+  const id = dashClean_(p.id, 300);
+  if (!id) return { ok: false, error: 'Missing row id.' };
+  const done = dashYesNo_(p.done);
+  if (done === null) return { ok: false, error: 'Nothing to save.' };
+  const by = dashClean_(p.by, 60);
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    let sheet = ss.getSheetByName(DASH_DONE_TAB);
+    if (!sheet) {
+      sheet = ss.insertSheet(DASH_DONE_TAB);
+      sheet.getRange(1, 1, 1, DASH_DONE_HEADERS.length).setValues([DASH_DONE_HEADERS]).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+      sheet.setColumnWidth(2, 320);
+    }
+    const last = sheet.getLastRow();
+    const ids = last > 1 ? sheet.getRange(2, 1, last - 1, 1).getDisplayValues() : [];
+    let rowNum = 0;
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]).trim() === id) { rowNum = i + 2; break; }
+    }
+    const item = dashClean_(p.item, 200);
+    const row = rowNum ? sheet.getRange(rowNum, 1, 1, DASH_DONE_HEADERS.length).getDisplayValues()[0] : [id, '', '', '', ''];
+    if (item) row[1] = item;
+    row[2] = done ? 'Yes' : 'No';
+    row[3] = new Date();
+    row[4] = by;
+    const target = sheet.getRange(rowNum || last + 1, 1, 1, DASH_DONE_HEADERS.length);
+    target.setValues([row.map(function (v) { return v instanceof Date ? v : dashText_(v); })]);
+    target.getCell(1, 4).setNumberFormat('mmm d, h:mm am/pm');
+    const stamp = Utilities.formatDate(new Date(), tz, 'MMM d, h:mm a');
+    return { ok: true, id: id, record: { done: done, updated: stamp, by: by } };
   } finally {
     lock.releaseLock();
   }

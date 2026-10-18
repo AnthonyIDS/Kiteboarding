@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<title>KSP Marketing Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface-2: #f1f4f8;
+    --border: #e2e7ee;
+    --text: #0f172a;
+    --muted: #64748b;
+    --accent: #0e7490;
+    --accent-hover: #0b5f76;
+    --accent-soft: #e2f3f7;
+    --on-accent: #ffffff;
+    --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 6px 20px rgba(15, 23, 42, .05);
+    --radius: 14px;
+    --info: #1d4ed8;   --info-soft: #dbeafe;
+    --ok: #15803d;     --ok-soft: #dcfce7;
+    --warn: #b45309;   --warn-soft: #fef3c7;
+    --danger: #b91c1c; --danger-soft: #fee2e2;
+    --neutral: #475569; --neutral-soft: #e9edf2;
+    /* Instructor colors */
+    --green: #15803d;  --green-soft: #dcfce7;
+    --blue: #1d4ed8;   --blue-soft: #dbeafe;
+    --purple: #7e22ce; --purple-soft: #f3e8ff;
+    --orange: #c2410c; --orange-soft: #ffedd5;
+    --pink: #be185d;   --pink-soft: #fce7f3;
+    --teal: #0f766e;   --teal-soft: #ccfbf1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1220;
+      --surface: #111a2b;
+      --surface-2: #17223a;
+      --border: #24324d;
+      --text: #e6edf6;
+      --muted: #91a3bb;
+      --accent: #22b5cc;
+      --accent-hover: #47c6da;
+      --accent-soft: rgba(34, 181, 204, .14);
+      --on-accent: #062029;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25);
+      --info: #93c5fd;   --info-soft: rgba(59, 130, 246, .18);
+      --ok: #86efac;     --ok-soft: rgba(34, 197, 94, .16);
+      --warn: #fcd34d;   --warn-soft: rgba(245, 158, 11, .16);
+      --danger: #fca5a5; --danger-soft: rgba(239, 68, 68, .16);
+      --neutral: #cbd5e1; --neutral-soft: rgba(148, 163, 184, .16);
+      --green: #86efac;  --green-soft: rgba(34, 197, 94, .18);
+      --blue: #93c5fd;   --blue-soft: rgba(59, 130, 246, .2);
+      --purple: #d8b4fe; --purple-soft: rgba(168, 85, 247, .2);
+      --orange: #fdba74; --orange-soft: rgba(249, 115, 22, .18);
+      --pink: #f9a8d4;   --pink-soft: rgba(236, 72, 153, .18);
+      --teal: #5eead4;   --teal-soft: rgba(20, 184, 166, .18);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 36px; padding: 0 14px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); color: var(--text);
+    font-weight: 500; cursor: pointer; white-space: nowrap;
+    transition: background .15s, border-color .15s;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn svg { width: 16px; height: 16px; }
+  .btn.is-loading svg { animation: spin .8s linear infinite; }
+  .btn-icon { width: 36px; padding: 0; justify-content: center; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Key gate */
+  .gate { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+  .gate-card {
+    width: 100%; max-width: 380px; padding: 28px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; box-shadow: var(--shadow);
+  }
+  .gate-card h1 { margin: 16px 0 4px; font-size: 20px; letter-spacing: -.01em; }
+  .gate-card p { margin: 0 0 18px; color: var(--muted); }
+  .gate-card label { display: block; font-weight: 500; margin-bottom: 6px; }
+  .gate-card .btn { width: 100%; justify-content: center; margin-top: 12px; height: 40px; }
+  .gate-error { color: var(--danger); margin-top: 10px; min-height: 1.5em; }
+  .field {
+    width: 100%; height: 40px; padding: 0 12px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); color: var(--text);
+  }
+
+  /* Header */
+  .logo {
+    width: 40px; height: 40px; flex: none; border-radius: 11px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #0e7490, #22b5cc); color: #fff;
+  }
+  .logo svg { width: 22px; height: 22px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand h1 { margin: 0; font-size: 20px; line-height: 1.2; letter-spacing: -.015em; }
+  .brand-sub { color: var(--muted); font-size: 13px; }
+  .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .banner {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 14px; margin-bottom: 16px; border-radius: 12px;
+    background: var(--warn-soft); color: var(--warn); font-weight: 500;
+  }
+  .banner.error { background: var(--danger-soft); color: var(--danger); }
+  .banner svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+
+  /* KPIs */
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 18px; min-width: 0;
+  }
+  .kpi-label { color: var(--muted); font-size: 13px; font-weight: 500; }
+  .kpi-value { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi-sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere; }
+  .kpi-accent .kpi-value { color: var(--accent); }
+
+  /* Panels */
+  .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); min-width: 0; display: flex; flex-direction: column;
+    margin-bottom: 20px;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 16px 18px 12px;
+  }
+  .panel-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.005em; }
+  .count { color: var(--muted); font-weight: 500; font-size: 13px; margin-left: 6px; }
+  .filters { display: flex; gap: 10px; padding: 0 18px 12px; }
+  .search { position: relative; flex: 1; min-width: 0; }
+  .search svg { position: absolute; left: 12px; top: 11px; width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
+  .search .field { height: 38px; padding-left: 36px; background: var(--surface-2); border-color: transparent; }
+  .search .field:focus { background: var(--surface); border-color: var(--border); }
+  .status-filter { height: 38px; padding: 0 10px; border: 1px solid transparent; border-radius: 10px; background: var(--surface-2); color: var(--text); max-width: 45%; }
+  .panel-body { padding: 0 18px 18px; min-width: 0; }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  .note-error { color: var(--danger); padding: 16px 0; }
+  .pill {
+    flex: none; display: inline-block; padding: 2px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; background: var(--neutral-soft); color: var(--neutral);
+  }
+  .pill.info { background: var(--info-soft); color: var(--info); }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.danger { background: var(--danger-soft); color: var(--danger); }
+  .footer { color: var(--muted); font-size: 12.5px; text-align: center; padding: 8px 0 24px; }
+
+  /* Filters row */
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .toolbar label { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 500; }
+  .toolbar select { height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); max-width: 220px; }
+  .toolbar .source { margin-left: auto; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .kpi-sub .up, .kpi-sub .down { font-weight: 600; color: var(--text); }
+
+  /* Charts */
+  .chart { position: relative; }
+  .bars { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 220px; margin-left: 48px; border-bottom: 1px solid var(--border); }
+  .gridline { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--border); pointer-events: none; }
+  .gridline span { position: absolute; right: calc(100% + 8px); top: -9px; font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .bar { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; cursor: default; }
+  .bar i { display: block; width: 100%; max-width: 48px; margin: 0 auto; min-height: 1px; border-radius: 4px 4px 0 0; background: var(--accent); }
+  .bar:hover i, .bar:focus-visible i { background: var(--accent-hover); }
+  .bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .xlabels { position: relative; height: 20px; margin-left: 48px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .xlabels span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+  .xlabels span:first-child { transform: none; }
+  .xlabels span:last-child { transform: translateX(-100%); }
+  .tip {
+    position: absolute; z-index: 5; pointer-events: none; padding: 6px 10px; border-radius: 8px;
+    background: var(--text); color: var(--bg); font-size: 12.5px; white-space: nowrap; box-shadow: var(--shadow);
+  }
+  .tip b { font-weight: 600; }
+
+  .hbars { list-style: none; margin: 0; padding: 0; }
+  .hbars li { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 6px 0; }
+  .hbars .name { overflow-wrap: anywhere; font-weight: 500; }
+  .hbars .track { height: 14px; }
+  .hbars .track i { display: block; height: 100%; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--accent); }
+  .hbars .val { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+  .hbars .share { color: var(--muted); font-weight: 500; margin-left: 6px; }
+  .two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; }
+  .two > .panel { margin-bottom: 20px; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--surface-2); font-weight: 600; color: var(--muted); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.wrap { white-space: normal; min-width: 180px; max-width: 360px; overflow-wrap: anywhere; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: var(--surface-2); }
+  .more { color: var(--muted); font-size: 13px; padding-top: 10px; }
+
+  /* Completed switch (same look as Jetski Needed on the team dashboard) */
+  .seg { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+  .seg button {
+    height: 26px; min-width: 44px; padding: 0 10px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--muted); font-weight: 600; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
+  .seg button[data-done="yes"][aria-pressed="true"] { background: var(--ok); color: var(--surface); }
+  .seg button:disabled { cursor: default; opacity: .6; }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  tr.is-done td:not(.done-cell) { color: var(--muted); }
+  td.done-cell { width: 1%; }
+  .team-msg { padding: 0 18px 10px; font-size: 12.5px; color: var(--danger); }
+  .team-msg:empty { display: none; }
+
+  @media (max-width: 960px) {
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .two { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  }
+  @media (max-width: 640px) {
+    .wrap { padding: 16px; }
+    .kpis { gap: 10px; margin-bottom: 16px; }
+    .kpi { padding: 12px 14px; }
+    .kpi-value { font-size: 24px; }
+    .panel, .two > .panel { margin-bottom: 16px; }
+    .panel-head { padding: 14px 14px 10px; }
+    .filters { padding: 0 14px 10px; }
+    .panel-body { padding: 0 14px 14px; }
+    .brand h1 { font-size: 17px; }
+    .actions { width: 100%; }
+    .actions .updated { flex: 1; }
+    .toolbar { gap: 8px; }
+    .toolbar label { flex: 1 1 100%; justify-content: space-between; }
+    .toolbar select { width: 62%; max-width: none; min-width: 0; }
+    .toolbar .source { margin-left: 0; width: 100%; }
+    .bars { height: 180px; margin-left: 40px; gap: 1px; }
+    .xlabels { margin-left: 40px; }
+    .hbars li { grid-template-columns: minmax(70px, 110px) minmax(0, 1fr) auto; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Key gate -->
+<div class="gate" id="gate" hidden>
+  <form class="gate-card" id="gate-form" autocomplete="off">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 20 9l-8 7-8-7 8-7Z"/><path d="M12 16c0 2-1 4-3 6"/></svg>
+    </div>
+    <h1>Marketing dashboard</h1>
+    <p>Kiteboarding St. Petersburg. Enter the team access key to continue.</p>
+    <label for="gate-key">Access key</label>
+    <input class="field" id="gate-key" type="password" autocomplete="current-password" required>
+    <button class="btn btn-primary" type="submit">Unlock</button>
+    <div class="gate-error" id="gate-error" role="alert"></div>
+  </form>
+</div>
+
+<!-- Dashboard -->
+<div class="wrap" id="app" hidden>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 20 9l-8 7-8-7 8-7Z"/><path d="M12 16c0 2-1 4-3 6"/></svg>
+      </div>
+      <div>
+        <h1>Kiteboarding St. Petersburg</h1>
+        <div class="brand-sub">Marketing dashboard</div>
+      </div>
+    </div>
+    <div class="actions">
+      <span class="brand-sub updated" id="updated"></span>
+      <a class="btn" href="./" id="team-link">Team dashboard</a>
+      <button class="btn" type="button" id="refresh-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        Refresh
+      </button>
+      <button class="btn" type="button" id="lock-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Lock
+      </button>
+    </div>
+  </header>
+
+  <div class="banner" id="demo-banner" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+    <span>Demo mode: this is sample data, not your real spreadsheet.</span>
+  </div>
+  <div class="banner error" id="error-banner" role="alert" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+    <span id="error-text"></span>
+  </div>
+
+  <div class="toolbar" id="toolbar">
+    <label id="range-wrap">Period
+      <select id="range">
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="365">Last 12 months</option>
+        <option value="ytd">This year</option>
+        <option value="all">All time</option>
+      </select>
+    </label>
+    <label id="metric-wrap">Chart
+      <select id="metric"></select>
+    </label>
+    <label id="group-wrap">Break down by
+      <select id="group"></select>
+    </label>
+    <span class="source" id="source"></span>
+  </div>
+
+  <section class="kpis" id="kpis" aria-label="Summary"></section>
+
+  <div class="two">
+    <section class="panel" aria-labelledby="trend-h" id="trend-panel">
+      <div class="panel-head"><h2 id="trend-h">Over time</h2><span class="count" id="trend-sub"></span></div>
+      <div class="panel-body"><div class="chart" id="trend"></div></div>
+    </section>
+    <section class="panel" aria-labelledby="split-h" id="split-panel">
+      <div class="panel-head"><h2 id="split-h">Breakdown</h2><span class="count" id="split-sub"></span></div>
+      <div class="panel-body"><ul class="hbars" id="split"></ul></div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="rows-h">
+    <div class="panel-head"><h2 id="rows-h">Marketing data<span class="count" id="rows-count"></span></h2></div>
+    <div class="filters">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input class="field" id="rows-q" type="search" placeholder="Search" aria-label="Search marketing data">
+      </div>
+      <select class="status-filter" id="done-filter" aria-label="Filter by Completed">
+        <option value="">All</option>
+        <option value="no">Not completed</option>
+        <option value="yes">Completed</option>
+      </select>
+    </div>
+    <div class="team-msg" id="done-msg" role="alert"></div>
+    <div class="panel-body"><div id="rows"></div></div>
+  </section>
+
+  <div class="footer">Marketing numbers come from the team Google Sheet. Press Refresh after you update it.</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // The same Apps Script web app URL as index.html (it ends in /exec).
+  const API_URL = 'https://script.google.com/macros/s/AKfycbxNeYvWP2KLU87YefQ8ZaTlT-Hw2MQ_s9PDlbGab4CHATvuPpInMYP46A1dcpsrS7k/exec';
+
+  // Shared with the team dashboard, so one unlock opens both pages.
+  const KEY_STORAGE = 'ksp-dashboard-key';
+  const NAME_STORAGE = 'ksp-dashboard-name'; // the name typed on the team dashboard
+  const VIEW_STORAGE = 'ksp-marketing-view';
+  const DAY_MS = 864e5;
+  const TABLE_LIMIT = 300;
+
+  const params = new URLSearchParams(location.search);
+  const API_READY = /^https:\/\/\S+$/.test(API_URL.trim());
+  const DEMO = params.has('demo') || !API_READY;
+
+  const $ = (id) => document.getElementById(id);
+  const state = { model: null, loading: false, saving: {} };
+  let memKey = '';
+
+  // ---------- Storage (every call guarded) ----------
+  const keyStore = {
+    get() { try { return localStorage.getItem(KEY_STORAGE) || ''; } catch (e) { return ''; } },
+    set(v) { try { localStorage.setItem(KEY_STORAGE, v); } catch (e) { /* private mode etc. */ } },
+    clear() { try { localStorage.removeItem(KEY_STORAGE); } catch (e) { /* ignore */ } }
+  };
+  const getKey = () => memKey || keyStore.get();
+  const viewStore = {
+    get() { try { return JSON.parse(localStorage.getItem(VIEW_STORAGE) || '{}') || {}; } catch (e) { return {}; } },
+    set(v) { try { localStorage.setItem(VIEW_STORAGE, JSON.stringify(v)); } catch (e) { /* ignore */ } }
+  };
+  let view = viewStore.get();
+  const myName = () => { try { return localStorage.getItem(NAME_STORAGE) || ''; } catch (e) { return ''; } };
+
+  // ---------- Helpers ----------
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  }
+  const pad = (n) => String(n).padStart(2, '0');
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const isBlank = (v) => v == null || String(v).trim() === '';
+  const norm = (h) => String(h).toLowerCase().replace(/[_\s]+/g, ' ').trim();
+
+  // Parses yyyy-MM-dd[THH:mm[:ss]] (what the API sends), M/D/YYYY, or anything Date can read.
+  function parseDate(v) {
+    if (isBlank(v) || typeof v === 'number') return null;
+    const s = String(v).trim();
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (m) return new Date(+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})/);
+    if (m) { let y = +m[3]; if (y < 100) y += 2000; return new Date(y, m[1] - 1, +m[2]); }
+    if (!/\d{4}/.test(s)) return null; // avoid Date.parse guessing at things like "May 5"
+    const t = Date.parse(s);
+    return isNaN(t) ? null : new Date(t);
+  }
+
+  // "$1,200", "3.4%", "1,024" and plain numbers; anything else is null.
+  function parseNum(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    if (isBlank(v)) return null;
+    const s = String(v).trim().replace(/[$,\s]/g, '').replace(/%$/, '');
+    if (!/^-?\d+(\.\d+)?$/.test(s) && !/^-?\.\d+$/.test(s)) return null;
+    return parseFloat(s);
+  }
+
+  const fmt = (d, opts) => d.toLocaleString('en-US', opts);
+  const thisYear = new Date().getFullYear();
+  function fmtDay(d, forceYear) {
+    const o = { month: 'short', day: 'numeric' };
+    if (forceYear || d.getFullYear() !== thisYear) o.year = 'numeric';
+    return fmt(d, o);
+  }
+  function fmtTime(d) { return fmt(d, { hour: 'numeric', minute: '2-digit' }); }
+
+  function fmtNum(n, metric, compact) {
+    if (n == null || !isFinite(n)) return '–';
+    const money = metric && metric.money;
+    const pct = metric && metric.pct;
+    const abs = Math.abs(n);
+    // Whole numbers stay whole ($157, 2,512); fractions get 1-2 decimals.
+    let digits = 0;
+    if (n % 1) digits = money || abs < 10 ? 2 : 1;
+    let s;
+    if (compact && abs >= 10000) {
+      s = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+    } else {
+      s = n.toLocaleString('en-US', { minimumFractionDigits: money ? digits : 0, maximumFractionDigits: digits });
+    }
+    if (money) s = (n < 0 ? '-$' : '$') + s.replace('-', '');
+    if (pct) s += '%';
+    return s;
+  }
+
+  function findCol(cols, patterns) {
+    for (const p of patterns) {
+      const hit = cols.find((c) => p.test(norm(c.name)));
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  // ---------- Model ----------
+  // Works out from the headers and values which column is the date, which
+  // are numbers worth charting and which one splits rows into groups.
+  const METRIC_ORDER = [
+    /spend|cost|budget|ad ?spend/, /lead|inquir|enquir|sign ?up|form/, /booking|booked|conversion|sale|revenue|purchase/,
+    /click/, /impression|reach|view|visit|session/, /follower|subscriber|fan|member/, /engag|like|comment|share|save/
+  ];
+  const AVG_RE = /rate|ctr|%|percent|avg|average|\bcpc\b|\bcpm\b|\bcpl\b|cost per|per lead|per click|roas|\broi\b/;
+  const LAST_RE = /follower|subscriber|fans|members|audience|list size|page likes/;
+  const MONEY_RE = /spend|cost|budget|revenue|sales|price|\$|\bcpc\b|\bcpm\b|\bcpl\b|amount|paid|income/;
+  const GROUP_RE = [/channel|platform|network|social/, /source|medium|utm/, /campaign/, /type|category|format|content/];
+
+  function buildModel(data) {
+    const t = data.marketing || {};
+    const headers = t.headers || [];
+    const raw = t.rows || [];
+    const cols = headers.map((name) => {
+      let filled = 0, nums = 0, dates = 0, money = 0, pct = 0;
+      const seen = {};
+      raw.forEach((r) => {
+        const v = r[name];
+        if (isBlank(v)) return;
+        filled++;
+        const s = String(v).trim();
+        seen[s.toLowerCase()] = true;
+        if (parseNum(v) != null) { nums++; if (/^-?\$/.test(s)) money++; if (/%$/.test(s)) pct++; }
+        else if (parseDate(v)) dates++;
+      });
+      return { name, filled, distinct: Object.keys(seen).length,
+        isNum: filled > 0 && nums / filled >= 0.7, isDate: filled > 0 && dates / filled >= 0.6,
+        moneyVals: nums && money / nums > 0.5, pctVals: nums && pct / nums > 0.5 };
+    });
+
+    const dateCands = cols.filter((c) => c.isDate);
+    const dateCol = findCol(dateCands, [/^date$/, /\bdate\b/, /week/, /month/, /\bday\b/, /period|posted|published|start|sent/]) || dateCands[0] || null;
+
+    const metrics = cols.filter((c) => c.isNum && c !== dateCol && !/\b(id|year|#|no\.?|number|zip|phone)\b/.test(norm(c.name)))
+      .map((c) => {
+        const n = norm(c.name);
+        const pct = c.pctVals || /rate|ctr|%|percent/.test(n);
+        return { name: c.name, money: !pct && (c.moneyVals || MONEY_RE.test(n)), pct,
+          agg: AVG_RE.test(n) || pct ? 'avg' : LAST_RE.test(n) ? 'last' : 'sum' };
+      });
+    metrics.forEach((m) => {
+      const n = norm(m.name);
+      const i = METRIC_ORDER.findIndex((p) => p.test(n));
+      m.rank = i < 0 ? METRIC_ORDER.length : i;
+    });
+    const ranked = metrics.slice().sort((a, b) => a.rank - b.rank);
+
+    const groupCands = cols.filter((c) => !c.isNum && c !== dateCol && c.distinct >= 2 && c.distinct <= 20 &&
+      c.distinct < Math.max(3, c.filled * 0.8));
+    const groupGuess = findCol(groupCands, GROUP_RE) || groupCands[0] || null;
+    const textCols = cols.filter((c) => !c.isNum && c !== dateCol && c.filled);
+    const titleCol = findCol(textCols, [/task|title|post|item|idea|to ?do/, /campaign|name|description|content|caption|topic/]) ||
+      textCols.find((c) => c !== groupGuess) || textCols[0] || null;
+
+    // Each row's Completed switch is keyed by its date, title and group, so
+    // it stays with the row when numbers change or rows are added.
+    const used = {};
+    const rowId = (r) => {
+      const parts = [dateCol && r[dateCol.name], titleCol && r[titleCol.name], groupGuess && groupGuess !== titleCol && r[groupGuess.name]]
+        .filter((v) => !isBlank(v));
+      const base = (parts.length ? parts : textCols.map((c) => r[c.name]).filter((v) => !isBlank(v)))
+        .map((v) => String(v).trim().toLowerCase().replace(/\s+/g, ' ')).join('|').slice(0, 280) || 'row';
+      used[base] = (used[base] || 0) + 1;
+      return used[base] > 1 ? base + '#' + used[base] : base;
+    };
+    const done = data.done || {};
+
+    const rows = raw.map((r, i) => {
+      const date = dateCol ? parseDate(r[dateCol.name]) : null;
+      const vals = {};
+      metrics.forEach((m) => { vals[m.name] = parseNum(r[m.name]); });
+      const hay = headers.map((h) => String(r[h] == null ? '' : r[h])).join(' ').toLowerCase();
+      const id = rowId(r);
+      const rec = done[id];
+      const item = [titleCol && r[titleCol.name], dateCol && r[dateCol.name]].filter((v) => !isBlank(v)).join(' · ') || id;
+      return { i, id, item, raw: r, date: date ? startOfDay(date) : null, vals, hay, done: !!(rec && rec.done), doneBy: rec ? rec.by : '', doneAt: rec ? rec.updated : '' };
+    });
+
+    // Spacing between entries tells daily, weekly or monthly data apart.
+    const days = Array.from(new Set(rows.filter((r) => r.date).map((r) => r.date.getTime()))).sort((a, b) => a - b);
+    let gap = Infinity;
+    for (let i = 1; i < days.length; i++) gap = Math.min(gap, Math.round((days[i] - days[i - 1]) / DAY_MS));
+
+    return {
+      headers, rows, metrics, ranked, dateCol: dateCol && dateCol.name, groups: groupCands.map((c) => c.name),
+      groupGuess: groupGuess && groupGuess.name, gap,
+      lastDate: days.length ? new Date(days[days.length - 1]) : null,
+      firstDate: days.length ? new Date(days[0]) : null,
+      error: t.error || '', tab: t.tab || '', file: t.file || '',
+      missing: !data.marketing,
+      doneReady: DEMO || !!data.done,
+      updated: data.updated ? parseDate(data.updated) : null
+    };
+  }
+
+  // Sum, average, or latest value (per group, then added up) of one metric.
+  function aggregate(rows, metric, groupCol) {
+    const vals = rows.filter((r) => r.vals[metric.name] != null);
+    if (!vals.length) return null;
+    if (metric.agg === 'sum') return vals.reduce((s, r) => s + r.vals[metric.name], 0);
+    if (metric.agg === 'avg') return vals.reduce((s, r) => s + r.vals[metric.name], 0) / vals.length;
+    const latest = {};
+    vals.forEach((r) => {
+      const g = groupCol ? String(r.raw[groupCol] || '') : '';
+      const cur = latest[g];
+      if (!cur || (r.date && (!cur.date || r.date >= cur.date)) || (!r.date && !cur.date && r.i > cur.i)) latest[g] = r;
+    });
+    return Object.keys(latest).reduce((s, g) => s + latest[g].vals[metric.name], 0);
+  }
+
+  // [from, to) for the chosen period, plus the period before it. "Last 30
+  // days" runs to today, and also keeps rows dated later (planned posts).
+  function periodBounds(m, range) {
+    if (!m.lastDate || range === 'all') return null;
+    const today = addDays(startOfDay(new Date()), 1);
+    const to = m.lastDate >= today ? addDays(m.lastDate, 1) : today;
+    if (range === 'ytd') {
+      const y = today.getFullYear();
+      return { from: new Date(y, 0, 1), to, prevFrom: new Date(y - 1, 0, 1), prevTo: new Date(y - 1, today.getMonth(), today.getDate()) };
+    }
+    const n = +range;
+    const from = addDays(today, -n);
+    return { from, to, prevFrom: addDays(from, -n), prevTo: from };
+  }
+  const inRange = (r, a, b) => r.date && r.date >= a && r.date < b;
+
+  // ---------- Rendering ----------
+  function currentView() {
+    const m = state.model;
+    const metric = m.metrics.find((x) => x.name === view.metric) || m.ranked[0] || null;
+    const group = view.group === '' ? '' : (m.groups.indexOf(view.group) >= 0 ? view.group : (m.groupGuess || ''));
+    let range = view.range || '90';
+    const b = m.dateCol ? periodBounds(m, range) : null;
+    const rows = b ? m.rows.filter((r) => inRange(r, b.from, b.to)) : m.rows;
+    // Rows with no date (not scheduled yet) always stay in the list.
+    const listRows = b ? m.rows.filter((r) => !r.date || inRange(r, b.from, b.to)) : m.rows;
+    return { metric, group, range, bounds: b, rows, listRows };
+  }
+
+  function render() {
+    const m = state.model;
+    if (!m) return;
+    $('updated').textContent = m.updated ? 'Updated ' + fmtDay(m.updated) + ', ' + fmtTime(m.updated) : '';
+    $('source').textContent = m.tab ? 'From ' + (m.file ? m.file + ' › ' : '') + m.tab : '';
+    if (!m.missing && !m.doneReady) {
+      showError('Update the dashboard script to use the Completed switches (see “Marketing dashboard” in the README).');
+    } else if (m.missing) {
+      showError('The dashboard script doesn’t send marketing data yet. Paste the new dashboard-api.gs into Apps Script and deploy a new version (see “Marketing dashboard” in the README).');
+    } else if (m.error) {
+      showError(m.error);
+    }
+
+    // Controls
+    $('range-wrap').hidden = !m.dateCol;
+    $('range').value = view.range || '90';
+    $('metric-wrap').hidden = !m.metrics.length;
+    $('metric').innerHTML = m.ranked.map((x) => '<option value="' + esc(x.name) + '">' + esc(x.name) + '</option>').join('');
+    $('group-wrap').hidden = !m.groups.length || !m.metrics.length;
+    $('group').innerHTML = '<option value="">Nothing</option>' + m.groups.map((g) => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('');
+    const v = currentView();
+    if (v.metric) $('metric').value = v.metric.name;
+    $('group').value = v.group;
+
+    renderKpis(v);
+    renderTrend(v);
+    renderSplit(v);
+    renderRows(v);
+  }
+
+  function periodLabel(range) {
+    return { '7': 'last 7 days', '30': 'last 30 days', '90': 'last 90 days', '365': 'last 12 months', ytd: 'this year', all: 'all time' }[range] || '';
+  }
+
+  function renderKpis(v) {
+    const m = state.model;
+    const b = v.bounds;
+    const prev = b ? m.rows.filter((r) => inRange(r, b.prevFrom, b.prevTo)) : [];
+    const tiles = [];
+    const picks = m.ranked.slice(0, 3);
+    const spend = m.metrics.find((x) => x.money && x.agg === 'sum' && /spend|cost|budget/.test(norm(x.name)));
+    const leads = m.metrics.find((x) => x.agg === 'sum' && /lead|inquir|enquir|sign ?up/.test(norm(x.name)));
+    const cpl = spend && leads && !m.metrics.some((x) => /cost per lead|\bcpl\b/.test(norm(x.name)));
+    if (cpl && picks.length === 3) picks.pop();
+
+    const label = b ? periodLabel(v.range) : (m.dateCol ? 'all time' : 'all rows');
+    function change(now, before) {
+      if (!b || now == null || before == null || before === 0) return '';
+      const pctChg = Math.round((now - before) / Math.abs(before) * 100);
+      const arrow = pctChg > 0 ? '▲' : pctChg < 0 ? '▼' : '';
+      return ' · <span class="' + (pctChg >= 0 ? 'up' : 'down') + '">' + arrow + ' ' + Math.abs(pctChg) + '%</span> vs previous';
+    }
+    picks.forEach((x, i) => {
+      const now = aggregate(v.rows, x, v.group || m.groupGuess);
+      const before = b ? aggregate(prev, x, v.group || m.groupGuess) : null;
+      const how = x.agg === 'avg' ? 'Average, ' : x.agg === 'last' ? 'Latest, ' : '';
+      tiles.push({ label: x.name, value: fmtNum(now, x), sub: esc(how + label) + change(now, before), accent: i === 0 });
+    });
+    if (cpl) {
+      const per = (rows) => { const s = aggregate(rows, spend), l = aggregate(rows, leads); return s != null && l ? s / l : null; };
+      const now = per(v.rows);
+      tiles.push({ label: 'Cost per ' + leads.name.replace(/s$/i, '').toLowerCase(), value: fmtNum(now, { money: true }),
+        sub: esc(spend.name + ' ÷ ' + leads.name) + change(now, b ? per(prev) : null) });
+    }
+    const doneCount = v.listRows.filter((r) => r.done).length;
+    tiles.push({ label: 'Completed', value: doneCount + ' of ' + v.listRows.length,
+      sub: v.listRows.length ? Math.round(doneCount / v.listRows.length * 100) + '% marked Yes, ' + esc(label) : (m.error ? 'Couldn’t read the marketing tab' : 'No rows ' + esc(label)) });
+    $('kpis').innerHTML = tiles.map((t) =>
+      '<div class="kpi' + (t.accent ? ' kpi-accent' : '') + '"><div class="kpi-label">' + esc(t.label) +
+      '</div><div class="kpi-value">' + esc(t.value) + '</div><div class="kpi-sub">' + t.sub + '</div></div>').join('');
+  }
+
+  // Buckets the period into days, weeks (from Monday) or months.
+  function buckets(v) {
+    const m = state.model;
+    const dated = v.rows.filter((r) => r.date);
+    if (!dated.length) return null;
+    const from = v.bounds ? v.bounds.from : m.firstDate;
+    const to = v.bounds ? addDays(v.bounds.to, -1) : m.lastDate;
+    const span = Math.round((to - from) / DAY_MS) + 1;
+    let unit = m.gap >= 28 ? 'month' : m.gap >= 7 ? 'week' : 'day';
+    if (unit === 'day' && span > 45) unit = 'week';
+    if (unit === 'week' && span > 26 * 7) unit = 'month';
+    const keyOf = (d) => {
+      if (unit === 'month') return new Date(d.getFullYear(), d.getMonth(), 1);
+      if (unit === 'week') return addDays(d, -((d.getDay() + 6) % 7));
+      return d;
+    };
+    const step = (d) => unit === 'month' ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : addDays(d, unit === 'week' ? 7 : 1);
+    const list = [];
+    for (let d = keyOf(from); d <= to; d = step(d)) list.push({ start: d, rows: [] });
+    const index = {};
+    list.forEach((x) => { index[x.start.getTime()] = x; });
+    dated.forEach((r) => { const x = index[keyOf(r.date).getTime()]; if (x) x.rows.push(r); });
+    // A week or month that only partly falls in the period can start empty.
+    while (list.length > 1 && !list[0].rows.length) list.shift();
+    return { unit, list };
+  }
+
+  function bucketLabel(d, unit, long) {
+    if (unit === 'month') return fmt(d, { month: 'short', year: long || d.getFullYear() !== thisYear ? 'numeric' : undefined });
+    return (unit === 'week' && long ? 'Week of ' : '') + fmtDay(d, long && d.getFullYear() !== thisYear);
+  }
+
+  function niceMax(n) {
+    if (!(n > 0)) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(n)));
+    const f = n / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+
+  function renderTrend(v) {
+    const m = state.model;
+    const box = $('trend');
+    const show = m.dateCol && v.metric;
+    $('trend-panel').hidden = !show;
+    if (!show) return;
+    const bk = buckets(v);
+    $('trend-h').textContent = v.metric.name + ' over time';
+    if (!bk) { box.innerHTML = '<div class="empty">No entries in this period.</div>'; $('trend-sub').textContent = ''; return; }
+    $('trend-sub').textContent = 'By ' + bk.unit;
+    const points = bk.list.map((x) => ({ start: x.start, value: aggregate(x.rows, v.metric, v.group || m.groupGuess) }));
+    const top = niceMax(Math.max(0, ...points.map((p) => p.value || 0)));
+    const ticks = [top, top / 2, 0];
+    const n = points.length;
+    const xIdx = n <= 3 ? points.map((_, i) => i) : [0, Math.floor((n - 1) / 2), n - 1];
+    box.innerHTML =
+      '<div class="bars" role="list" aria-label="' + esc(v.metric.name + ' by ' + bk.unit) + '">' +
+      ticks.map((t) => '<div class="gridline" style="bottom:' + (t / top * 100) + '%"><span>' + esc(fmtNum(t, v.metric, true)) + '</span></div>').join('') +
+      points.map((p, i) => {
+        const h = p.value > 0 ? Math.max(0.5, p.value / top * 100) : 0;
+        const text = bucketLabel(p.start, bk.unit, true) + ': ' + (p.value == null ? 'no entry' : fmtNum(p.value, v.metric));
+        return '<div class="bar" role="listitem" tabindex="0" data-i="' + i + '" aria-label="' + esc(text) + '"><i style="height:' + h + '%"></i></div>';
+      }).join('') + '</div>' +
+      '<div class="xlabels" aria-hidden="true">' + xIdx.map((i) =>
+        '<span style="left:' + ((i + 0.5) / n * 100) + '%">' + esc(bucketLabel(points[i].start, bk.unit)) + '</span>').join('') + '</div>' +
+      '<div class="tip" id="tip" hidden></div>';
+    box._points = points; box._unit = bk.unit; box._metric = v.metric;
+  }
+
+  function showTip(bar) {
+    const box = $('trend');
+    const p = box._points && box._points[+bar.dataset.i];
+    const tip = $('tip');
+    if (!p || !tip) return;
+    tip.innerHTML = esc(bucketLabel(p.start, box._unit, true)) + '<br><b>' + esc(p.value == null ? 'No entry' : fmtNum(p.value, box._metric)) + '</b>';
+    tip.hidden = false;
+    const br = bar.getBoundingClientRect(), cr = box.getBoundingClientRect();
+    const left = Math.min(Math.max(br.left - cr.left + br.width / 2 - tip.offsetWidth / 2, 0), cr.width - tip.offsetWidth);
+    tip.style.left = left + 'px';
+    tip.style.top = '-8px';
+  }
+
+  function renderSplit(v) {
+    const m = state.model;
+    const show = v.group && v.metric;
+    $('split-panel').hidden = !show;
+    $('trend-panel').parentNode.style.gridTemplateColumns = show && !$('trend-panel').hidden ? '' : 'minmax(0, 1fr)';
+    if (!show) return;
+    $('split-h').textContent = v.metric.name + ' by ' + v.group.toLowerCase();
+    $('split-sub').textContent = v.bounds ? periodLabel(v.range) : '';
+    const by = {};
+    v.rows.forEach((r) => {
+      const g = String(r.raw[v.group] == null ? '' : r.raw[v.group]).trim() || '(blank)';
+      (by[g] = by[g] || []).push(r);
+    });
+    let items = Object.keys(by).map((g) => ({ name: g, value: aggregate(by[g], v.metric, v.group) }))
+      .filter((x) => x.value != null).sort((a, b) => b.value - a.value);
+    if (items.length > 8 && v.metric.agg !== 'avg') {
+      const rest = items.slice(7);
+      items = items.slice(0, 7).concat([{ name: 'Other (' + rest.length + ')', value: rest.reduce((s, x) => s + x.value, 0) }]);
+    }
+    const total = items.reduce((s, x) => s + Math.max(0, x.value), 0);
+    const top = Math.max(0, ...items.map((x) => x.value));
+    $('split').innerHTML = items.length ? items.map((x) =>
+      '<li><span class="name">' + esc(x.name) + '</span><span class="track"><i style="width:' + (top > 0 ? Math.max(0, x.value) / top * 100 : 0) + '%"></i></span>' +
+      '<span class="val">' + esc(fmtNum(x.value, v.metric)) +
+      (v.metric.agg !== 'avg' && total > 0 ? '<span class="share">' + Math.round(Math.max(0, x.value) / total * 100) + '%</span>' : '') + '</span></li>').join('')
+      : '<li class="empty">No entries in this period.</li>';
+  }
+
+  function renderRows(v) {
+    const m = state.model;
+    const q = $('rows-q').value.trim().toLowerCase();
+    const df = $('done-filter').value;
+    let list = v.listRows.filter((r) => (!q || r.hay.indexOf(q) >= 0) && (!df || r.done === (df === 'yes')));
+    if (m.dateCol) list = list.slice().sort((a, b) => (b.date || 0) - (a.date || 0) || b.i - a.i);
+    else list = list.slice().reverse();
+    $('rows-count').textContent = list.length === m.rows.length ? String(list.length) : list.length + ' of ' + m.rows.length;
+    const box = $('rows');
+    if (!m.headers.length) { box.innerHTML = '<div class="empty">' + esc(m.error || 'No marketing data yet.') + '</div>'; return; }
+    if (!list.length) { box.innerHTML = '<div class="empty">' + (q || df ? 'Nothing matches these filters.' : 'No entries in this period.') + '</div>'; return; }
+    const numCols = {};
+    m.metrics.forEach((x) => { numCols[x.name] = x; });
+    const cell = (h, r) => {
+      const val = r.raw[h];
+      if (numCols[h]) return '<td class="num">' + esc(isBlank(val) ? '' : (r.vals[h] == null ? val : fmtNum(r.vals[h], numCols[h]))) + '</td>';
+      if (h === m.dateCol && r.date) return '<td>' + esc(fmtDay(r.date, true)) + '</td>';
+      const s = String(val == null ? '' : val);
+      return '<td' + (s.length > 40 ? ' class="wrap"' : '') + '>' + esc(s) + '</td>';
+    };
+    const off = (r) => !m.doneReady || state.saving[r.id] ? ' disabled' : '';
+    const doneCell = (r) => '<td class="done-cell"><span class="seg" role="group" aria-label="Completed: ' + esc(r.item) + '"' +
+      (r.doneBy || r.doneAt ? ' title="' + esc('Set by ' + (r.doneBy || 'someone') + (r.doneAt ? ', ' + r.doneAt : '')) + '"' : '') + '>' +
+      '<button type="button" data-id="' + esc(r.id) + '" data-done="no" aria-pressed="' + !r.done + '"' + off(r) + '>No</button>' +
+      '<button type="button" data-id="' + esc(r.id) + '" data-done="yes" aria-pressed="' + r.done + '"' + off(r) + '>Yes</button></span></td>';
+    box.innerHTML = '<div class="table-wrap"><table><thead><tr><th scope="col">Completed</th>' +
+      m.headers.map((h) => '<th' + (numCols[h] ? ' class="num"' : '') + ' scope="col">' + esc(h) + '</th>').join('') +
+      '</tr></thead><tbody>' + list.slice(0, TABLE_LIMIT).map((r) => '<tr' + (r.done ? ' class="is-done"' : '') + '>' + doneCell(r) + m.headers.map((h) => cell(h, r)).join('') + '</tr>').join('') +
+      '</tbody></table></div>' +
+      (list.length > TABLE_LIMIT ? '<div class="more">Showing the newest ' + TABLE_LIMIT + '. Search or pick a shorter period to see others.</div>' : '');
+  }
+
+  // Flips one row's Completed switch, then saves it to the Marketing Completed tab.
+  async function markDone(id, done) {
+    const m = state.model;
+    const row = m && m.rows.find((r) => r.id === id);
+    if (!row || row.done === done || state.saving[id]) return;
+    const before = row.done;
+    row.done = done;
+    state.saving[id] = true;
+    $('done-msg').textContent = '';
+    render();
+    try {
+      if (!DEMO) {
+        const url = API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + new URLSearchParams({
+          action: 'mark', key: getKey(), id, item: row.item, done: done ? 'yes' : 'no', by: myName().trim()
+        }).toString();
+        const res = await fetch(url, { cache: 'no-store' });
+        let json;
+        try { json = JSON.parse(await res.text()); } catch (e) { throw new Error('The API did not return JSON.'); }
+        if (!json.ok) throw new Error(json.error || 'Couldn’t save.');
+        row.doneBy = json.record.by; row.doneAt = json.record.updated;
+      }
+    } catch (err) {
+      row.done = before;
+      $('done-msg').textContent = 'Couldn’t save Completed for “' + row.item + '”: ' + (err instanceof TypeError ? 'check your connection.' : err.message);
+    } finally {
+      delete state.saving[id];
+      render();
+    }
+  }
+
+  // ---------- Data loading ----------
+  function showError(msg) {
+    $('error-text').textContent = msg || '';
+    $('error-banner').hidden = !msg;
+  }
+
+  function showGate(msg) {
+    state.model = null;
+    $('app').hidden = true;
+    $('gate').hidden = false;
+    $('gate-error').textContent = msg || '';
+    $('gate-key').value = '';
+    $('gate-key').focus();
+  }
+
+  function setData(data) {
+    state.model = buildModel(data);
+    // Fall back to all time when the chosen period has no entries.
+    const m = state.model;
+    if (m.dateCol && !view.range) {
+      const b = periodBounds(m, '90');
+      if (b && !m.rows.some((r) => inRange(r, b.from, b.to))) view.range = 'all';
+    }
+    $('gate').hidden = true;
+    $('app').hidden = false;
+    showError('');
+    render();
+  }
+
+  async function load() {
+    if (DEMO) { setData(demoData()); return; }
+    const key = getKey();
+    if (!key) { showGate(); return; }
+    if (state.loading) return;
+    state.loading = true;
+    $('refresh-btn').classList.add('is-loading');
+    $('refresh-btn').disabled = true;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    try {
+      const url = API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=marketing&key=' + encodeURIComponent(key);
+      const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch (e) {
+        throw new Error('The API did not return JSON. Check that the web app is deployed with access set to “Anyone”.');
+      }
+      if (!json.ok) {
+        if (json.error === 'unauthorized') {
+          memKey = '';
+          keyStore.clear();
+          showGate('That key didn’t work. Check it and try again.');
+          return;
+        }
+        throw new Error(json.error || 'The API returned an error.');
+      }
+      setData(json);
+    } catch (err) {
+      const msg = err.name === 'AbortError' ? 'The request timed out. Try Refresh.'
+        : err instanceof TypeError ? 'Could not reach the dashboard API. Check your connection and the API_URL, then try Refresh.'
+        : err.message;
+      if (state.model) showError(msg + ' Showing the last data loaded.');
+      else { $('gate').hidden = true; $('app').hidden = false; showError(msg); }
+    } finally {
+      clearTimeout(timer);
+      state.loading = false;
+      $('refresh-btn').classList.remove('is-loading');
+      $('refresh-btn').disabled = false;
+    }
+  }
+
+  // ---------- Demo data ----------
+  function demoData() {
+    const headers = ['Week Of', 'Channel', 'Campaign', 'Spend', 'Impressions', 'Clicks', 'Leads', 'Bookings', 'Followers', 'Notes'];
+    const channels = [
+      { name: 'Instagram', spend: 120, imp: 9000, ctr: 0.012, lead: 0.07, book: 0.35, fol: 2400, grow: 18, camp: 'Reels: first lesson' },
+      { name: 'Facebook', spend: 90, imp: 7000, ctr: 0.009, lead: 0.06, book: 0.3, fol: 3100, grow: 6, camp: 'Gift cards' },
+      { name: 'Google Ads', spend: 160, imp: 4000, ctr: 0.045, lead: 0.09, book: 0.4, fol: null, grow: 0, camp: 'Kite lessons St Pete' },
+      { name: 'TikTok', spend: 40, imp: 12000, ctr: 0.006, lead: 0.04, book: 0.25, fol: 800, grow: 25, camp: 'Wipeout of the week' }
+    ];
+    let seed = 7;
+    const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+    const monday = addDays(startOfDay(new Date()), -((new Date().getDay() + 6) % 7));
+    const rows = [];
+    for (let w = 25; w >= 0; w--) {
+      const d = addDays(monday, -7 * w);
+      const season = 0.7 + 0.5 * Math.sin((d.getMonth() + 1) / 12 * Math.PI * 2 - 1);
+      const ds = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      channels.forEach((c) => {
+        const k = season * (0.8 + rand() * 0.4);
+        const imp = Math.round(c.imp * k);
+        const clicks = Math.round(imp * c.ctr * (0.85 + rand() * 0.3));
+        const leads = Math.round(clicks * c.lead * (0.7 + rand() * 0.6));
+        rows.push({
+          'Week Of': ds, Channel: c.name, Campaign: c.camp,
+          Spend: Math.round(c.spend * (0.85 + rand() * 0.3)), Impressions: imp, Clicks: clicks, Leads: leads,
+          Bookings: Math.round(leads * c.book * (0.6 + rand() * 0.8)),
+          Followers: c.fol == null ? '' : Math.round(c.fol + c.grow * (25 - w) * (0.8 + rand() * 0.4)),
+          Notes: w === 3 && c.name === 'Instagram' ? 'Boosted the Skyway sunset reel' : ''
+        });
+      });
+    }
+    const done = {};
+    rows.forEach((r, i) => { if (i < rows.length - 12 && i % 3 !== 1) done[[r['Week Of'], r.Campaign, r.Channel].join('|').toLowerCase()] = { done: true, by: 'Anthony', updated: '' }; });
+    return { ok: true, updated: new Date().toISOString().slice(0, 19), marketing: { headers, rows, tab: 'Marketing (sample)', file: '' }, done };
+  }
+
+  // ---------- Events ----------
+  $('gate-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const key = $('gate-key').value.trim();
+    if (!key) return;
+    memKey = key;
+    keyStore.set(key);
+    $('gate-error').textContent = '';
+    $('gate').hidden = true;
+    $('app').hidden = false;
+    load();
+  });
+  $('refresh-btn').addEventListener('click', load);
+  $('lock-btn').addEventListener('click', () => {
+    memKey = '';
+    keyStore.clear();
+    showError('');
+    $('rows-q').value = '';
+    ['kpis', 'trend', 'split', 'rows'].forEach((id) => { $(id).innerHTML = ''; });
+    showGate();
+  });
+  function setView(patch) {
+    view = Object.assign({}, view, patch);
+    viewStore.set(view);
+    render();
+  }
+  $('range').addEventListener('change', (e) => setView({ range: e.target.value }));
+  $('metric').addEventListener('change', (e) => setView({ metric: e.target.value }));
+  $('group').addEventListener('change', (e) => setView({ group: e.target.value }));
+  $('rows-q').addEventListener('input', () => state.model && renderRows(currentView()));
+  $('done-filter').addEventListener('change', () => state.model && renderRows(currentView()));
+  $('rows').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-done]');
+    if (b && !b.disabled) markDone(b.dataset.id, b.dataset.done === 'yes');
+  });
+  const trend = $('trend');
+  ['mouseover', 'focusin'].forEach((t) => trend.addEventListener(t, (e) => {
+    const bar = e.target.closest('.bar');
+    if (bar) showTip(bar);
+  }));
+  ['mouseleave', 'focusout'].forEach((t) => trend.addEventListener(t, () => { const tip = $('tip'); if (tip) tip.hidden = true; }));
+
+  // ---------- Start ----------
+  if (DEMO) {
+    $('demo-banner').hidden = false;
+    $('lock-btn').hidden = true; // nothing to lock in demo mode
+    $('team-link').href = './?demo';
+  }
+  if (!DEMO && !getKey()) showGate();
+  else { $('app').hidden = false; load(); }
+})();
+</script>
+</body>
+</html>

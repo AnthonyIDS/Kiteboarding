@@ -9,8 +9,9 @@ Google Sheet ("Lesson Requests" tab) ──► Apps Script web app (JSON) ──
 - **Data** stays in Google Sheets. The repo holds no data and no secrets.
 - **`apps-script/dashboard-api.gs`** is a reference copy of the script that serves the **Lesson Requests** tab as JSON. The live copy lives in Apps Script. It never changes the **Lesson Requests** tab, so the form that writes there keeps working. Team notes and **Jetski Needed** are saved on their own tab, **Dashboard Notes**, which the script creates the first time someone saves.
 - **`index.html`** is the whole dashboard: one static file with no build step.
+- **`marketing.html`** is the marketing dashboard (see [Marketing dashboard](#marketing-dashboard)). It uses the same script, URL and access key.
 
-To preview with sample data, open `index.html?demo`.
+To preview with sample data, open `index.html?demo` or `marketing.html?demo`.
 
 ## Setup
 
@@ -74,13 +75,30 @@ On first visit, each team member enters the access key once. The browser remembe
 - You can still put notes in the sheet's own **Notes** column and update **Status** as you go (for example New → Contacted → Booked).
 - Press **Refresh** to see new submissions.
 
+## Marketing dashboard
+
+`marketing.html` shows your marketing sheet in the same style: summary tiles, a chart over time, a breakdown (for example by channel) and every row in a searchable table. It's live at `https://anthonyids.github.io/Kiteboarding/marketing.html`, and the **Marketing** button on the team dashboard opens it. One unlock works for both pages.
+
+It reads the marketing tab and never changes it. It works out the columns on its own: a date column (for example **Date** or **Week Of**) drives the **Period** menu and the chart, number columns (Spend, Clicks, Leads, Followers and so on) become tiles and chart choices, and a column like **Channel** or **Platform** fills **Break down by**. Spend and Leads together also give **Cost per lead**. Rows with no date always stay in the table.
+
+**Completed**: every row has a **Completed** No/Yes switch, like **Jetski Needed** on the team dashboard. Everyone sees the same switches after pressing **Refresh**, and the table can be filtered to show only completed or not-completed rows. The switches are saved on their own tab, **Marketing Completed**, in the lesson requests spreadsheet. The script creates it the first time someone flips a switch. Each switch is matched to its row by the row's date, its name column (for example **Task**, **Post** or **Campaign**) and its channel, so if you change those cells in the marketing sheet, that row's switch goes back to No.
+
+### Turn it on
+
+1. Merge the pull request that adds `marketing.html`.
+2. Follow [Updating the script](#updating-the-script-after-a-change-to-dashboard-apigs) below, with one extra step before you click **Save**: set the two marketing lines near the top.
+   - `MARKETING_SHEET_ID`: if **2025/ 26 KSP - Marketing** is its own Google Sheets file, open it and copy the part of its URL between `/d/` and `/edit`, then paste it between the quotes. If it's a tab inside the lesson requests spreadsheet, leave it `''`.
+   - `MARKETING_TAB`: the tab's name, already set to `2025/ 26 KSP - Marketing`. If the marketing file has only one tab, or you've set `MARKETING_SHEET_ID`, you can leave it as it is.
+3. When you run **checkDashboard**, the **Execution log** shows a **Marketing** line with how many rows and which columns it found. If it says ERROR, it lists the tab names it can see; fix `MARKETING_TAB` or `MARKETING_SHEET_ID` and run it again.
+4. Deploy the new version (step 7 of Updating the script), then open the marketing page and press **Refresh**.
+
 ## Updating the script (after a change to `dashboard-api.gs`)
 
 1. Open [`apps-script/dashboard-api.gs`](apps-script/dashboard-api.gs) on GitHub and click the **Copy raw file** button (two overlapping squares, top right of the code).
 2. In your spreadsheet, go to **Extensions → Apps Script** and open the `dashboard-api` file.
-3. Before replacing anything, copy your two settings lines, `DASHBOARD_KEY` and `SHEET_ID`, somewhere safe (a note on your phone is fine).
+3. Before replacing anything, copy your settings lines, `DASHBOARD_KEY`, `SHEET_ID` and (once you have them) `MARKETING_SHEET_ID` and `MARKETING_TAB`, somewhere safe (a note on your phone is fine).
 4. Select everything in the file (**Ctrl+A**, or **Cmd+A** on a Mac), then paste (**Ctrl+V** / **Cmd+V**).
-5. Put your `DASHBOARD_KEY` and `SHEET_ID` values back in those two lines, then click **Save**.
+5. Put those values back in the same lines, then click **Save**.
 6. Choose **checkDashboard** in the toolbar and click **Run**. If Google asks for permission again, approve it. Adding lessons asks for permission to manage your calendars the first time.
 7. Click **Deploy → Manage deployments → Edit** (pencil), set **Version** to **New version**, and click **Deploy**. The URL stays the same.
 8. Open the dashboard and press **Refresh**.
@@ -89,7 +107,7 @@ On first visit, each team member enters the access key once. The browser remembe
 
 The access key only keeps casual visitors out. It is **not** strong security:
 
-- Anyone with the key can read every lesson request, including names, phone numbers and emails, and can add team notes, change Jetski Needed and add lessons to the instructors' calendars. The key is stored in each team member's browser.
+- Anyone with the key can read every lesson request, including names, phone numbers and emails, and can add team notes, change Jetski Needed and add lessons to the instructors' calendars. It can also read the marketing tab and flip its Completed switches. The key is stored in each team member's browser.
 - The page carries `noindex`, so search engines shouldn't list it. The page itself is public, though. Only the data needs the key.
 - **Rotate the key whenever someone leaves the team.** Change `DASHBOARD_KEY` in Apps Script, deploy a new version (step 3), and share the new key. Old keys stop working immediately.
 - Don't share the key in public channels, and never commit it to this repository.
