@@ -416,6 +416,7 @@
     </div>
     <div class="actions">
       <span class="brand-sub updated" id="updated"></span>
+      <a class="btn" href="marketing.html" id="marketing-link">Marketing</a>
       <button class="btn" type="button" id="refresh-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
         Refresh
@@ -1776,6 +1777,7 @@
   if (DEMO) {
     $('demo-banner').hidden = false;
     $('lock-btn').hidden = true; // nothing to lock in demo mode
+    $('marketing-link').href = 'marketing.html?demo';
   }
   if (!DEMO && !getKey()) showGate();
   else { $('app').hidden = false; load(); }
