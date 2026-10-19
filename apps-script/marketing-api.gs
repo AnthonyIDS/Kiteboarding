@@ -34,8 +34,8 @@ const MARKETING_KEY = '';
 const MARKETING_SHEET_ID = '';
 
 /** Tab names. Each must match the tab at the bottom of the sheet. */
-const ANALYTICS_TAB = 'Analytics';          // numbers: one row per month (and channel)
-const CONTENT_TAB = 'Blog Posts Update';    // content calendar: one row per post
+const ANALYTICS_TAB = 'Monthly Numbers';    // numbers: one row per month (and channel)
+const CONTENT_TAB = 'Content Calendar';     // content calendar: one row per post
 const GOALS_TAB = 'Goals';                  // optional: one row per month with targets
 
 // ---- Internals -------------------------------------------------------------
