@@ -5,10 +5,11 @@
  * dashboard as JSON. It never changes the Lesson Requests tab, so the
  * website form that writes there keeps working.
  *
- * Team notes and the "Jetski Needed" switch are saved on a separate tab,
- * "Dashboard Notes", which the script creates the first time someone saves.
- * One row per student: Request ID, Student, Jetski Needed, Notes, Updated,
- * Updated By. Newest notes are at the top of the Notes cell.
+ * Team notes, the "Jetski Needed" switch and the New / Repeat client switch
+ * are saved on a separate tab, "Dashboard Notes", which the script creates
+ * the first time someone saves. One row per student: Request ID, Student,
+ * Jetski Needed, Notes, Updated, Updated By, Client Type. Newest notes are at
+ * the top of the Notes cell.
  *
  * Apps Script files share one global scope. Apart from doGet,
  * checkDashboard and the settings below, every global here starts with
@@ -17,8 +18,8 @@
  *
  * GET <exec url>?key=DASHBOARD_KEY returns
  *   { ok, updated, lessons: { headers: [...], rows: [{ header: value }] },
- *     team: { <request id>: { jetski, notes, updated, by } } }
- * GET ...&action=save&id=...&student=...&by=...[&jetski=yes|no][&note=...]
+ *     team: { <request id>: { jetski, client, notes, updated, by } } }
+ * GET ...&action=save&id=...&student=...&by=...[&jetski=yes|no][&client=new|repeat][&note=...]
  *   saves to Dashboard Notes and returns { ok, id, record }
  * GET ...&action=book&id=...&student=...&by=...&instructor=...&date=yyyy-MM-dd
  *       &start=HH:mm&minutes=...[&phone=...][&email=...][&lesson=...]
@@ -61,7 +62,8 @@ const DASH_CALENDARS = {
 
 const DASH_LESSONS_TAB = 'Lesson Requests';
 const DASH_NOTES_TAB = 'Dashboard Notes';
-const DASH_NOTES_HEADERS = ['Request ID', 'Student', 'Jetski Needed', 'Notes', 'Updated', 'Updated By'];
+// Client Type is last so tabs made before it existed keep their columns.
+const DASH_NOTES_HEADERS = ['Request ID', 'Student', 'Jetski Needed', 'Notes', 'Updated', 'Updated By', 'Client Type'];
 const DASH_NOTE_MAX = 2000;     // longest single note
 const DASH_CELL_MAX = 45000;    // Sheets cells hold 50,000 characters
 const DASH_TAG = 'kspDashboard'; // event tag: the request id it was booked for
@@ -208,7 +210,7 @@ function dashCell_(value, displayValue, tz) {
 
 // ---- Team notes and Jetski Needed (the "Dashboard Notes" tab) ------------
 
-/** { <request id>: { jetski: true|false|null, notes, updated, by } } */
+/** { <request id>: { jetski: true|false|null, client: 'New'|'Repeat'|'', notes, updated, by } } */
 function dashReadTeam_(ss) {
   const out = {};
   const sheet = ss.getSheetByName(DASH_NOTES_TAB);
@@ -217,12 +219,12 @@ function dashReadTeam_(ss) {
   values.forEach(function (r) {
     const id = String(r[0]).trim();
     if (!id) return;
-    out[id] = { jetski: dashYesNo_(r[2]), notes: r[3], updated: r[4], by: r[5] };
+    out[id] = { jetski: dashYesNo_(r[2]), client: dashClientType_(r[6]), notes: r[3], updated: r[4], by: r[5] };
   });
   return out;
 }
 
-/** Saves one student's Jetski setting and/or a new note. */
+/** Saves one student's Jetski setting, New / Repeat, and/or a new note. */
 function dashSave_(ss, tz, p) {
   const id = dashClean_(p.id, 300);
   if (!id) return { ok: false, error: 'Missing request id.' };
@@ -230,7 +232,8 @@ function dashSave_(ss, tz, p) {
   if (!by) return { ok: false, error: 'Enter your name before saving.' };
   const note = dashClean_(p.note, DASH_NOTE_MAX);
   const jetski = p.jetski === undefined ? null : dashYesNo_(p.jetski);
-  if (!note && jetski === null) return { ok: false, error: 'Nothing to save.' };
+  const client = dashClientType_(p.client);
+  if (!note && jetski === null && !client) return { ok: false, error: 'Nothing to save.' };
 
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -242,6 +245,9 @@ function dashSave_(ss, tz, p) {
       sheet.setFrozenRows(1);
       sheet.setColumnWidth(4, 420);
     }
+    // A tab made before Client Type existed gets that header added.
+    const typeHead = sheet.getRange(1, 7);
+    if (!String(typeHead.getDisplayValue()).trim()) typeHead.setValue(DASH_NOTES_HEADERS[6]).setFontWeight('bold');
     const last = sheet.getLastRow();
     const ids = last > 1 ? sheet.getRange(2, 1, last - 1, 1).getDisplayValues() : [];
     let rowNum = 0;
@@ -249,12 +255,13 @@ function dashSave_(ss, tz, p) {
       if (String(ids[i][0]).trim() === id) { rowNum = i + 2; break; }
     }
     const range = rowNum ? sheet.getRange(rowNum, 1, 1, DASH_NOTES_HEADERS.length) : null;
-    const row = range ? range.getDisplayValues()[0] : [id, '', '', '', '', ''];
+    const row = range ? range.getDisplayValues()[0] : [id, '', '', '', '', '', ''];
 
     const stamp = Utilities.formatDate(new Date(), tz, 'MMM d, h:mm a');
     const student = dashClean_(p.student, 120);
     if (student) row[1] = student;
     if (jetski !== null) row[2] = jetski ? 'Yes' : 'No';
+    if (client) row[6] = client;
     if (note) {
       let notes = stamp + ' · ' + by + ': ' + note + (row[3] ? '\n' + row[3] : '');
       if (notes.length > DASH_CELL_MAX) notes = notes.slice(0, DASH_CELL_MAX);
@@ -266,7 +273,7 @@ function dashSave_(ss, tz, p) {
     const target = range || sheet.getRange(last + 1, 1, 1, DASH_NOTES_HEADERS.length);
     target.setValues([row.map(function (v) { return v instanceof Date ? v : dashText_(v); })]).setWrap(true);
     target.getCell(1, 5).setNumberFormat('mmm d, h:mm am/pm');
-    return { ok: true, id: id, record: { jetski: dashYesNo_(row[2]), notes: row[3], updated: stamp, by: by } };
+    return { ok: true, id: id, record: { jetski: dashYesNo_(row[2]), client: dashClientType_(row[6]), notes: row[3], updated: stamp, by: by } };
   } finally {
     lock.releaseLock();
   }
@@ -425,6 +432,12 @@ function dashUnbook_(ss, tz, p) {
   } catch (err) {
     return { ok: false, error: String((err && err.message) || err) };
   }
+}
+
+/** 'New', 'Repeat', or '' when not set. */
+function dashClientType_(v) {
+  const s = String(v == null ? '' : v).trim().toLowerCase();
+  return s === 'new' ? 'New' : s === 'repeat' ? 'Repeat' : '';
 }
 
 function dashYesNo_(v) {
