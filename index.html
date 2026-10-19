@@ -196,6 +196,7 @@
   .req-time { margin-top: 10px; color: var(--muted); font-size: 12.5px; }
   .req-pills { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
   .pill.jetski { background: var(--orange-soft); color: var(--orange); }
+  .pill.repeat { background: var(--purple-soft); color: var(--purple); }
 
   /* Team notes and Jetski Needed */
   .team { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
@@ -208,6 +209,10 @@
   }
   .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
   .seg button[data-jetski="yes"][aria-pressed="true"] { background: var(--orange); color: #fff; }
+  .seg button[data-client="repeat"][aria-pressed="true"] { background: var(--purple); color: #fff; }
+  .team-row + .team-row { margin-top: 8px; }
+  .ctype { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .ctype .seg button { height: 26px; min-width: 64px; }
   .seg button:disabled { cursor: default; opacity: .6; }
   .seg button:focus-visible, .note-form textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .team-notes {
@@ -747,6 +752,7 @@
         idx,
         id,
         jetski: t.jetski === true,
+        repeat: t.client === 'Repeat',
         teamNotes: t.notes ? String(t.notes) : '',
         name: isBlank(name) ? '' : String(name).trim(),
         status: lc.status && !isBlank(r[lc.status]) ? String(r[lc.status]).trim() : '',
@@ -876,6 +882,13 @@
     return parts.some(Boolean) ? parts.join('|') : 'row-' + idx;
   }
   const jetskiPill = (l) => (l.jetski ? '<span class="pill jetski">Jetski needed</span>' : '');
+  const repeatPill = (l) => (l.repeat ? '<span class="pill repeat">Repeat client</span>' : '');
+  // New / Repeat client switch. Not set yet counts as New.
+  function clientSeg(l, off) {
+    return '<div class="seg" role="group" aria-label="' + esc('New or repeat client: ' + (l.name || 'this student')) + '">' +
+      '<button type="button" data-client="new" aria-pressed="' + !l.repeat + '"' + off + '>New</button>' +
+      '<button type="button" data-client="repeat" aria-pressed="' + l.repeat + '"' + off + '>Repeat</button></div>';
+  }
 
   // Time of a requested lesson, for sorting (minutes after midnight) and
   // display. Uses the time in the date cell if there is one, else the time
@@ -1031,7 +1044,7 @@
         when = 'Submitted ' + fmtDay(l.submitted) + ' · ' + fmtTime(l.submitted) + (rel ? ' · ' + rel : '');
       }
       return '<article class="req' + (m.instCol ? ' ' + icClass(l) : '') + '">' +
-        '<div class="req-top"><h3>' + esc(l.name || 'Unnamed request') + '</h3><span class="req-pills">' + jetskiPill(l) +
+        '<div class="req-top"><h3>' + esc(l.name || 'Unnamed request') + '</h3><span class="req-pills">' + repeatPill(l) + jetskiPill(l) +
         (l.status ? '<span class="pill ' + tone + '">' + esc(l.status) + '</span>' : '') + '</span></div>' +
         (l.instructor ? '<div>' + instLabel(l) + '</div>' : '') +
         (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') +
@@ -1050,13 +1063,14 @@
     const ready = state.model.teamReady;
     const busy = !!state.saving[l.id];
     const off = !ready || busy ? ' disabled' : '';
-    const msg = !ready ? { text: 'To save notes and Jetski Needed, update the Apps Script (see the README).' } : state.msgs[l.id];
+    const msg = !ready ? { text: 'To save notes, Jetski Needed and New / Repeat, update the Apps Script (see the README).' } : state.msgs[l.id];
     const label = esc('Jetski Needed for ' + (l.name || 'this student'));
     return '<div class="team" data-id="' + esc(l.id) + '" data-key="' + esc(l.id) + '">' +
       '<div class="team-row"><span class="team-lbl">Jetski Needed</span>' +
       '<div class="seg" role="group" aria-label="' + label + '">' +
       '<button type="button" data-jetski="no" aria-pressed="' + !l.jetski + '"' + off + '>No</button>' +
       '<button type="button" data-jetski="yes" aria-pressed="' + l.jetski + '"' + off + '>Yes</button></div></div>' +
+      '<div class="team-row"><span class="team-lbl">Client</span>' + clientSeg(l, off) + '</div>' +
       (l.teamNotes ? '<div class="team-notes"><b>Team notes</b>\n' + esc(l.teamNotes) + '</div>' : '') +
       '<form class="note-form">' +
       '<textarea name="note" maxlength="2000" placeholder="Leave a note for the team" aria-label="' + esc('Note about ' + (l.name || 'this student')) + '"' + off + '>' +
@@ -1150,18 +1164,25 @@
       const stamp = fmtDay(new Date()) + ', ' + fmtTime(new Date());
       return {
         jetski: 'jetski' in patch ? patch.jetski : l.jetski,
+        client: 'repeat' in patch ? (patch.repeat ? 'Repeat' : 'New') : (l.repeat ? 'Repeat' : ''),
         notes: patch.note ? stamp + ' · ' + by + ': ' + patch.note + (l.teamNotes ? '\n' + l.teamNotes : '') : l.teamNotes
       };
     }
     const q = new URLSearchParams({ key: getKey(), action: 'save', id: l.id, student: l.name, by });
     if ('jetski' in patch) q.set('jetski', patch.jetski ? 'yes' : 'no');
+    if ('repeat' in patch) q.set('client', patch.repeat ? 'repeat' : 'new');
     if (patch.note) q.set('note', patch.note);
     const res = await fetch(API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + q.toString(), { cache: 'no-store' });
     let json;
     try { json = JSON.parse(await res.text()); } catch (e) { throw new Error('Couldn’t save. Check your connection and try again.'); }
     if (json.error === 'unauthorized') throw new Error('The access key no longer works. Click Lock and enter the new key.');
-    if (!json.ok) throw new Error(json.error || 'Couldn’t save.');
+    if (!json.ok) {
+      // A script from before New / Repeat ignores "client" and finds nothing to save.
+      if ('repeat' in patch && json.error === 'Nothing to save.') throw new Error('Switching New / Repeat needs the updated Apps Script. See the README.');
+      throw new Error(json.error || 'Couldn’t save.');
+    }
     if (!json.record) throw new Error('Saving needs the updated Apps Script. See the README.');
+    if ('repeat' in patch && !('client' in json.record)) throw new Error('Switching New / Repeat needs the updated Apps Script. See the README.');
     return json.record;
   }
 
@@ -1188,19 +1209,22 @@
     key = key || id;
     const l = state.model && state.model.byId[id];
     if (!l || state.saving[id]) return;
-    const before = { jetski: l.jetski, teamNotes: l.teamNotes };
+    const before = { jetski: l.jetski, repeat: l.repeat, teamNotes: l.teamNotes };
     if ('jetski' in patch) l.jetski = patch.jetski; // show it right away
+    if ('repeat' in patch) l.repeat = patch.repeat;
     state.saving[id] = true;
     state.msgs[key] = { text: 'Saving…' };
     renderKeepFocus();
     try {
       const rec = await saveTeam(l, patch);
       l.jetski = rec.jetski === true;
+      if ('client' in rec) l.repeat = rec.client === 'Repeat';
       l.teamNotes = rec.notes ? String(rec.notes) : '';
       if (patch.note) delete state.drafts[key];
       state.msgs[key] = { text: 'Saved. The team sees it after Refresh.' };
     } catch (err) {
       l.jetski = before.jetski;
+      l.repeat = before.repeat;
       l.teamNotes = before.teamNotes;
       state.msgs[key] = { text: err.message || 'Couldn’t save.', error: true };
     } finally {
@@ -1453,9 +1477,12 @@
         .filter(Boolean).join(' · ');
       return '<li class="' + icClass(l) + (isOpen(l.status) ? '' : ' past') + '"><div><strong>' + esc(l.name || 'Unnamed request') + '</strong>' +
         (l.status ? ' <span class="pill ' + statusTone(l.status) + '">' + esc(l.status) + '</span>' : '') +
+        (l.repeat ? ' ' + repeatPill(l) : '') +
         (l.jetski ? ' ' + jetskiPill(l) : '') +
         (sub ? '<div class="muted">' + esc(sub) + '</div>' : '') +
-        (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') + clientNotesHtml(l) + '</div></li>';
+        (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') +
+        '<div class="ctype" data-id="' + esc(l.id) + '">Client' + clientSeg(l, !m.teamReady || state.saving[l.id] ? ' disabled' : '') + '</div>' +
+        clientNotesHtml(l) + '</div></li>';
     }).join('') : '<div class="empty">No students for ' + esc(cur === NO_INST ? 'this list' : cur) + ' yet.</div>';
   }
   // Notes for one client: the same team notes as their request card, behind a
@@ -1712,7 +1739,7 @@
     const lc = { submitted: 'Submitted', email: 'Email', phone: 'Phone' };
     const idOf = (i) => requestId(rows[i], lc, rows[i].Name, i);
     data.team[idOf(3)] = { jetski: true, notes: 'Yesterday · Brad: Strong wind forecast, he drifts downwind. Bring the jetski.', updated: '', by: 'Brad' };
-    data.team[idOf(1)] = { jetski: false, notes: 'Today · Anthony: Called him, Saturday afternoon works.', updated: '', by: 'Anthony' };
+    data.team[idOf(1)] = { jetski: false, client: 'Repeat', notes: 'Today · Anthony: Called him, Saturday afternoon works.', updated: '', by: 'Anthony' };
     return data;
   }
 
@@ -1767,6 +1794,7 @@
       }
       return;
     }
+    if (clientClick(e)) return;
     const btn = e.target.closest('[data-jetski]');
     const id = btn && teamOf(btn);
     if (!id || btn.disabled) return;
@@ -1806,6 +1834,20 @@
     }
     updateTeam(id, { note }, key);
   }
+  // New / Repeat, on a request card or under Instructor's clients.
+  function clientClick(e) {
+    const btn = e.target.closest('[data-client]');
+    if (!btn || !state.model) return false;
+    const holder = btn.closest('.team, .ctype');
+    const id = holder && holder.dataset.id;
+    const l = id && state.model.byId[id];
+    if (!l || btn.disabled) return true;
+    const want = btn.dataset.client === 'repeat';
+    // Messages go to the notes box under the same client.
+    if (l.repeat !== want) updateTeam(id, { repeat: want }, holder.classList.contains('ctype') ? 'c:' + id : id);
+    return true;
+  }
+  $('clients-list').addEventListener('click', clientClick);
   $('clients-list').addEventListener('input', noteInput);
   $('clients-list').addEventListener('submit', (e) => { e.preventDefault(); noteSubmit(e); });
   $('lessons').addEventListener('input', (e) => {
