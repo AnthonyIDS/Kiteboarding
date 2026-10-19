@@ -764,7 +764,7 @@
     $('score-hint').innerHTML = hint;
     $('score-hint').hidden = !hint;
   }
-  const ANALYTICS = () => state.model.A.tab || 'Analytics';
+  const ANALYTICS = () => state.model.A.tab || 'Monthly Numbers';
 
   function renderFunnel() {
     const A = state.model.A, k = state.month;
@@ -825,7 +825,7 @@
     if (!C.headers.length) {
       $('cc-count').textContent = '';
       $('cc-stats').textContent = '';
-      box.innerHTML = '<div class="empty">' + (C.error ? tabHint(C, C.tab || 'Blog Posts Update', 'Set CONTENT_TAB in marketing-api.gs to your content tab.') : 'No posts yet.') + '</div>';
+      box.innerHTML = '<div class="empty">' + (C.error ? tabHint(C, C.tab || 'Content Calendar', 'Set CONTENT_TAB in marketing-api.gs to your content tab.') : 'No posts yet.') + '</div>';
       return;
     }
     const today = startOfDay(new Date());
@@ -1105,7 +1105,7 @@
       [21, 'Year in review', 'Blog', 'Anthony', 'Idea'],
       ['', 'Partner with local surf shop', 'Instagram', 'Brad', 'Idea']
     ];
-    const content = { tab: 'Blog Posts Update', headers: ['Publish Date', 'Title', 'Platform', 'Owner', 'Status', 'Link'],
+    const content = { tab: 'Content Calendar', headers: ['Publish Date', 'Title', 'Platform', 'Owner', 'Status', 'Link'],
       rows: posts.map((p) => ({ 'Publish Date': p[0] === '' ? '' : day(p[0]), Title: p[1], Platform: p[2], Owner: p[3], Status: p[4], Link: '' })) };
     const goals = { tab: 'Goals', headers: ['Month', 'Leads Goal', 'Bookings Goal', 'Revenue Goal'], rows: [] };
     for (let mo = 0; mo < 12; mo++) {
@@ -1116,8 +1116,8 @@
     done[[day(-9), 'what to wear for winter kiting', 'blog'].join('|')] = { done: true, by: 'Nate', updated: '' };
     return {
       ok: true, updated: new Date().toISOString().slice(0, 19), file: '2025/ 26 KSP - Marketing (sample)',
-      sheets: ['Analytics', 'Blog Posts Update', 'Goals'],
-      analytics: { tab: 'Analytics', headers: Object.keys(rows[0]), rows }, content, goals, done
+      sheets: ['Monthly Numbers', 'Content Calendar', 'Goals'],
+      analytics: { tab: 'Monthly Numbers', headers: Object.keys(rows[0]), rows }, content, goals, done
     };
   }
 

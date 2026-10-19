@@ -90,8 +90,8 @@ It reads three tabs of the marketing spreadsheet and never changes them:
 
 | Tab | One row per | Columns it understands |
 | --- | --- | --- |
-| **Analytics** | month (and channel) | Month (or Date), Channel, Spend, Impressions, Website Visits, Leads, Bookings, Revenue, Followers, Google Reviews, Rating, Calls, Profile Views |
-| **Blog Posts Update** | post | Publish Date (or Due), Title, Platform, Owner, Status, Link |
+| **Monthly Numbers** | month (and channel) | Month (or Date), Channel, Spend, Impressions, Website Visits, Leads, Bookings, Revenue, Followers, Google Reviews, Rating, Calls, Profile Views |
+| **Content Calendar** | post | Publish Date (or Due), Title, Platform, Owner, Status, Link |
 | **Goals** (optional) | month | Month, Leads Goal, Bookings Goal, Revenue Goal |
 
 Column names don't have to match exactly ("Website Sessions" counts as visits, "Lessons Booked" as bookings), any column can be missing, and its section simply hides. Other number columns still show up in the charts. The tab names are set at the top of `marketing-api.gs`.
