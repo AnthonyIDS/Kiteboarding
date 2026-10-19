@@ -326,6 +326,12 @@
   .clients h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   .clients h3 select { width: auto; min-width: 160px; height: 32px; padding: 0 8px; font-weight: 500; max-width: 60%; }
   .clients .past { opacity: .7; }
+  .clients li > div { flex: 1; min-width: 0; }
+  .cnotes { margin-top: 8px; padding-top: 0; border-top: 0; }
+  .cnotes summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); width: max-content; max-width: 100%; }
+  .cnotes summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .cnotes .team-notes { margin-top: 6px; }
+  .cnotes .note-form { margin-top: 8px; }
   .detail { padding: 16px 0 0; }
   .detail h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
   .detail ul { list-style: none; margin: 0; padding: 0; }
@@ -557,7 +563,7 @@
   const DEMO = params.has('demo') || !API_READY;
 
   const $ = (id) => document.getElementById(id);
-  const state = { data: null, model: null, view: null, selected: null, loading: false, drafts: {}, msgs: {}, saving: {}, book: {}, evEdit: {}, evBusy: null, demoEvents: null };
+  const state = { data: null, model: null, view: null, selected: null, loading: false, drafts: {}, msgs: {}, saving: {}, clientOpen: {}, book: {}, evEdit: {}, evBusy: null, demoEvents: null };
   let memKey = '';
 
   // ---------- Storage (every call guarded) ----------
@@ -1046,7 +1052,7 @@
     const off = !ready || busy ? ' disabled' : '';
     const msg = !ready ? { text: 'To save notes and Jetski Needed, update the Apps Script (see the README).' } : state.msgs[l.id];
     const label = esc('Jetski Needed for ' + (l.name || 'this student'));
-    return '<div class="team" data-id="' + esc(l.id) + '">' +
+    return '<div class="team" data-id="' + esc(l.id) + '" data-key="' + esc(l.id) + '">' +
       '<div class="team-row"><span class="team-lbl">Jetski Needed</span>' +
       '<div class="seg" role="group" aria-label="' + label + '">' +
       '<button type="button" data-jetski="no" aria-pressed="' + !l.jetski + '"' + off + '>No</button>' +
@@ -1162,36 +1168,41 @@
   // Re-renders without losing the place of someone typing in another card.
   function renderKeepFocus() {
     const a = document.activeElement;
-    const id = a && a.closest && a.closest('.team') ? a.closest('.team').dataset.id : null;
-    const name = id && a.name;
-    const sel = id && 'selectionStart' in a ? [a.selectionStart, a.selectionEnd] : null;
+    const key = a && a.closest && a.closest('.team') ? a.closest('.team').dataset.key : null;
+    const name = key && a.name;
+    const sel = key && 'selectionStart' in a ? [a.selectionStart, a.selectionEnd] : null;
     render();
-    if (!id || !name) return;
-    const box = Array.prototype.find.call(document.querySelectorAll('#lessons .team'), (b) => b.dataset.id === id);
+    if (!key || !name) return;
+    const box = teamBox(key);
     const el = box && box.querySelector('[name="' + name + '"]');
     if (!el || el.disabled) return;
     el.focus();
     if (sel) { try { el.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text field */ } }
   }
 
-  async function updateTeam(id, patch) {
+  // The notes box for a key: a lesson card's id, or "c:" + id in Instructor's clients.
+  const teamBox = (key) => Array.prototype.find.call(document.querySelectorAll('.team'), (b) => b.dataset.key === key);
+
+  // key says which box gets the "Saved" message and loses its draft.
+  async function updateTeam(id, patch, key) {
+    key = key || id;
     const l = state.model && state.model.byId[id];
     if (!l || state.saving[id]) return;
     const before = { jetski: l.jetski, teamNotes: l.teamNotes };
     if ('jetski' in patch) l.jetski = patch.jetski; // show it right away
     state.saving[id] = true;
-    state.msgs[id] = { text: 'Saving…' };
+    state.msgs[key] = { text: 'Saving…' };
     renderKeepFocus();
     try {
       const rec = await saveTeam(l, patch);
       l.jetski = rec.jetski === true;
       l.teamNotes = rec.notes ? String(rec.notes) : '';
-      if (patch.note) delete state.drafts[id];
-      state.msgs[id] = { text: 'Saved. The team sees it after Refresh.' };
+      if (patch.note) delete state.drafts[key];
+      state.msgs[key] = { text: 'Saved. The team sees it after Refresh.' };
     } catch (err) {
       l.jetski = before.jetski;
       l.teamNotes = before.teamNotes;
-      state.msgs[id] = { text: err.message || 'Couldn’t save.', error: true };
+      state.msgs[key] = { text: err.message || 'Couldn’t save.', error: true };
     } finally {
       delete state.saving[id];
       if (state.model && state.model.byId[id] === l) renderKeepFocus();
@@ -1444,9 +1455,35 @@
         (l.status ? ' <span class="pill ' + statusTone(l.status) + '">' + esc(l.status) + '</span>' : '') +
         (l.jetski ? ' ' + jetskiPill(l) : '') +
         (sub ? '<div class="muted">' + esc(sub) + '</div>' : '') +
-        (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') + '</div></li>';
+        (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') + clientNotesHtml(l) + '</div></li>';
     }).join('') : '<div class="empty">No students for ' + esc(cur === NO_INST ? 'this list' : cur) + ' yet.</div>';
   }
+  // Notes for one client: the same team notes as their request card, behind a
+  // "Notes" toggle so a long client list stays short.
+  function clientNotesHtml(l) {
+    const key = 'c:' + l.id;
+    const ready = state.model.teamReady;
+    const busy = !!state.saving[l.id];
+    const off = !ready || busy ? ' disabled' : '';
+    const msg = !ready ? { text: 'To save notes, update the Apps Script (see the README).' } : state.msgs[key];
+    const count = l.teamNotes ? l.teamNotes.split('\n').filter((x) => /^.+? · .+?: /.test(x)).length : 0;
+    const open = state.clientOpen[l.id] || state.drafts[key] || (msg && msg.error);
+    return '<details class="team cnotes" data-id="' + esc(l.id) + '" data-key="' + esc(key) + '"' + (open ? ' open' : '') + '>' +
+      '<summary>' + (l.teamNotes ? 'Notes' + (count ? ' (' + count + ')' : '') : 'Add a note') + '</summary>' +
+      (l.teamNotes ? '<div class="team-notes">' + esc(l.teamNotes) + '</div>' : '') +
+      '<form class="note-form">' +
+      '<textarea name="note" maxlength="2000" placeholder="Leave a note about this client" aria-label="' + esc('Note about ' + (l.name || 'this client')) + '"' + off + '>' +
+      esc(state.drafts[key] || '') + '</textarea>' +
+      '<div class="note-actions"><input class="field by" name="by" list="team-names" maxlength="60" placeholder="Your name" aria-label="Your name" value="' +
+      esc(myName) + '"' + off + '><button class="btn btn-primary" type="submit"' + off + '>' + (busy ? 'Saving…' : 'Add note') + '</button></div>' +
+      '</form>' +
+      '<div class="team-msg' + (msg && msg.error ? ' error' : '') + '" role="status">' + esc(msg ? msg.text : '') + '</div>' +
+      '</details>';
+  }
+  $('clients-list').addEventListener('toggle', (e) => {
+    const box = e.target.closest && e.target.closest('.cnotes');
+    if (box) state.clientOpen[box.dataset.id] = box.open;
+  }, true);
   $('clients-inst').addEventListener('change', (e) => {
     try { localStorage.setItem(CLIENTS_STORAGE, e.target.value); } catch (err) { /* ignore */ }
     if (state.model) renderClients();
@@ -1742,33 +1779,45 @@
     return !!id;
   };
   $('lessons').addEventListener('change', bookField);
-  $('lessons').addEventListener('input', (e) => {
-    if (bookField(e)) return;
-    const id = teamOf(e.target);
-    if (!id) return;
-    if (e.target.name === 'note') state.drafts[id] = e.target.value;
+  // Typing and "Add note", in a request card or under Instructor's clients.
+  function noteInput(e) {
+    const box = e.target.closest('.team');
+    if (!box) return;
+    if (e.target.name === 'note') state.drafts[box.dataset.key] = e.target.value;
     if (e.target.name === 'by') {
       myName = e.target.value;
       nameStore.set(myName.trim());
       document.querySelectorAll('.note-form .by').forEach((f) => { if (f !== e.target) f.value = myName; });
       $('ev-by').value = myName;
     }
+  }
+  function noteSubmit(e) {
+    const box = e.target.closest('.team');
+    if (!box) return;
+    const id = box.dataset.id, key = box.dataset.key;
+    const note = e.target.elements.note.value.trim();
+    if (!note) { e.target.elements.note.focus(); return; }
+    if (!myName.trim()) {
+      state.msgs[key] = { text: 'Type your name next to the button so the team knows who wrote it.', error: true };
+      renderKeepFocus();
+      const again = teamBox(key);
+      if (again) again.querySelector('.by').focus();
+      return;
+    }
+    updateTeam(id, { note }, key);
+  }
+  $('clients-list').addEventListener('input', noteInput);
+  $('clients-list').addEventListener('submit', (e) => { e.preventDefault(); noteSubmit(e); });
+  $('lessons').addEventListener('input', (e) => {
+    if (bookField(e)) return;
+    noteInput(e);
   });
   $('lessons').addEventListener('submit', (e) => {
     e.preventDefault();
     const id = teamOf(e.target);
     if (!id) return;
     if (e.target.classList.contains('book-form')) { bookLesson(id); return; }
-    const note = e.target.elements.note.value.trim();
-    if (!note) { e.target.elements.note.focus(); return; }
-    if (!myName.trim()) {
-      state.msgs[id] = { text: 'Type your name next to the button so the team knows who wrote it.', error: true };
-      renderLessons();
-      const box = Array.prototype.find.call(document.querySelectorAll('#lessons .team'), (b) => b.dataset.id === id);
-      if (box) box.querySelector('.by').focus();
-      return;
-    }
-    updateTeam(id, { note });
+    noteSubmit(e);
   });
   $('lessons-q').addEventListener('input', () => state.model && renderLessons());
   $('status-filter').addEventListener('change', () => state.model && renderLessons());
