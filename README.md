@@ -9,7 +9,7 @@ Google Sheet ("Lesson Requests" tab) ──► Apps Script web app (JSON) ──
 - **Data** stays in Google Sheets. The repo holds no data and no secrets.
 - **`apps-script/dashboard-api.gs`** is a reference copy of the script that serves the **Lesson Requests** tab as JSON. The live copy lives in Apps Script. It never changes the **Lesson Requests** tab, so the form that writes there keeps working. Team notes and **Jetski Needed** are saved on their own tab, **Dashboard Notes**, which the script creates the first time someone saves.
 - **`index.html`** is the whole dashboard: one static file with no build step.
-- **`marketing.html`** is the marketing dashboard (see [Marketing dashboard](#marketing-dashboard)). It uses the same script, URL and access key.
+- **`marketing.html`** is the marketing dashboard (see [Marketing dashboard](#marketing-dashboard)). It has its own script, [`apps-script/marketing-api.gs`](apps-script/marketing-api.gs), which lives in the marketing spreadsheet, with its own web app URL and access key.
 
 To preview with sample data, open `index.html?demo` or `marketing.html?demo`.
 
@@ -77,28 +77,49 @@ On first visit, each team member enters the access key once. The browser remembe
 
 ## Marketing dashboard
 
-`marketing.html` shows your marketing sheet in the same style: summary tiles, a chart over time, a breakdown (for example by channel) and every row in a searchable table. It's live at `https://anthonyids.github.io/Kiteboarding/marketing.html`, and the **Marketing** button on the team dashboard opens it. One unlock works for both pages.
+`marketing.html` is laid out the way a marketing agency would report, top to bottom. It's live at `https://anthonyids.github.io/Kiteboarding/marketing.html`, and the **Marketing** button on the team dashboard opens it. Pick a month at the top; every section follows it.
 
-It reads the marketing tab and never changes it. It works out the columns on its own: a date column (for example **Date** or **Week Of**) drives the **Period** menu and the chart, number columns (Spend, Clicks, Leads, Followers and so on) become tiles and chart choices, and a column like **Channel** or **Platform** fills **Break down by**. Spend and Leads together also give **Cost per lead**. Rows with no date always stay in the table.
+1. **Scorecard** ("Are we on track this month?"): Leads, Booked lessons, Conversion rate, Revenue and Cost per booking, each compared with the month before, with a progress bar toward the month's goal.
+2. **Funnel** ("Where do we lose people?"): Impressions → Website visits → Leads → Bookings, with the share that made it from each step.
+3. **Channels** ("What's working?"): each channel's bookings (or leads, revenue, spend), plus spend and cost per booking by channel.
+4. **Content calendar** ("What's due and is it done?"): every post with a **Completed** No/Yes switch, like **Jetski Needed** on the team dashboard. Overdue and due-soon posts are flagged; **To do** shows what's left.
+5. **Reputation and reach** ("Is the brand growing?"): followers, Google reviews, rating, calls and profile views, with the change from last month.
+6. **Season trend** ("How does this year compare?"): each month this year next to the same month last year.
 
-**Completed**: every row has a **Completed** No/Yes switch, like **Jetski Needed** on the team dashboard. Everyone sees the same switches after pressing **Refresh**, and the table can be filtered to show only completed or not-completed rows. The switches are saved on their own tab, **Marketing Completed**, in the lesson requests spreadsheet. The script creates it the first time someone flips a switch. Each switch is matched to its row by the row's date, its name column (for example **Task**, **Post** or **Campaign**) and its channel, so if you change those cells in the marketing sheet, that row's switch goes back to No.
+It reads three tabs of the marketing spreadsheet and never changes them:
 
-### Turn it on
+| Tab | One row per | Columns it understands |
+| --- | --- | --- |
+| **Analytics** | month (and channel) | Month (or Date), Channel, Spend, Impressions, Website Visits, Leads, Bookings, Revenue, Followers, Google Reviews, Rating, Calls, Profile Views |
+| **Blog Posts Update** | post | Publish Date (or Due), Title, Platform, Owner, Status, Link |
+| **Goals** (optional) | month | Month, Leads Goal, Bookings Goal, Revenue Goal |
 
-1. Merge the pull request that adds `marketing.html`.
-2. Follow [Updating the script](#updating-the-script-after-a-change-to-dashboard-apigs) below, with one extra step before you click **Save**: set the two marketing lines near the top.
-   - `MARKETING_SHEET_ID`: if **2025/ 26 KSP - Marketing** is its own Google Sheets file, open it and copy the part of its URL between `/d/` and `/edit`, then paste it between the quotes. If it's a tab inside the lesson requests spreadsheet, leave it `''`.
-   - `MARKETING_TAB`: the tab's name, already set to `2025/ 26 KSP - Marketing`. If the marketing file has only one tab, or you've set `MARKETING_SHEET_ID`, you can leave it as it is.
-3. When you run **checkDashboard**, the **Execution log** shows a **Marketing** line with how many rows and which columns it found. If it says ERROR, it lists the tab names it can see; fix `MARKETING_TAB` or `MARKETING_SHEET_ID` and run it again.
-4. Deploy the new version (step 7 of Updating the script), then open the marketing page and press **Refresh**.
+Column names don't have to match exactly ("Website Sessions" counts as visits, "Lessons Booked" as bookings), any column can be missing, and its section simply hides. Other number columns still show up in the charts. The tab names are set at the top of `marketing-api.gs`.
+
+The **Completed** switches are saved on their own tab, **Marketing Completed**, in the marketing spreadsheet. The script creates it the first time someone flips a switch. A post whose **Status** says Published, Posted or Done counts as completed until someone flips its switch.
+
+### Set up the marketing script
+
+The marketing script is attached to the marketing spreadsheet, separate from the team dashboard's script.
+
+1. Open the **2025/ 26 KSP - Marketing** spreadsheet and click **Extensions → Apps Script**.
+2. Open the script file on the left. Select everything (**Ctrl+A**, or **Cmd+A** on a Mac) and delete it.
+3. Open [`apps-script/marketing-api.gs`](apps-script/marketing-api.gs) on GitHub, click **Copy raw file** (two overlapping squares), and paste it into the empty file.
+4. Near the top, type your marketing access key between the quotes in `const MARKETING_KEY = '';`. Use only letters, numbers and dashes. Leave `MARKETING_SHEET_ID` as `''`.
+5. Check the three tab names under it (`ANALYTICS_TAB`, `CONTENT_TAB`, `GOALS_TAB`) match the tabs at the bottom of your sheet, then click **Save**.
+6. Pick **checkMarketing** in the toolbar and click **Run**. Allow access if Google asks. The **Execution log** lists each tab with the columns it found.
+7. Click **Deploy → Manage deployments**, click the pencil (**Edit**), set **Version** to **New version**, and click **Deploy**. The web app URL stays the same.
+8. Open the marketing page, type the marketing key, and press **Refresh**.
+
+The page remembers the marketing key separately from the team key, so each page asks for its own.
 
 ## Updating the script (after a change to `dashboard-api.gs`)
 
 1. Open [`apps-script/dashboard-api.gs`](apps-script/dashboard-api.gs) on GitHub and click the **Copy raw file** button (two overlapping squares, top right of the code).
 2. In your spreadsheet, go to **Extensions → Apps Script** and open the `dashboard-api` file.
-3. Before replacing anything, copy your settings lines, `DASHBOARD_KEY`, `SHEET_ID` and (once you have them) `MARKETING_SHEET_ID` and `MARKETING_TAB`, somewhere safe (a note on your phone is fine).
+3. Before replacing anything, copy your two settings lines, `DASHBOARD_KEY` and `SHEET_ID`, somewhere safe (a note on your phone is fine).
 4. Select everything in the file (**Ctrl+A**, or **Cmd+A** on a Mac), then paste (**Ctrl+V** / **Cmd+V**).
-5. Put those values back in the same lines, then click **Save**.
+5. Put your `DASHBOARD_KEY` and `SHEET_ID` values back in those two lines, then click **Save**.
 6. Choose **checkDashboard** in the toolbar and click **Run**. If Google asks for permission again, approve it. Adding lessons asks for permission to manage your calendars the first time.
 7. Click **Deploy → Manage deployments → Edit** (pencil), set **Version** to **New version**, and click **Deploy**. The URL stays the same.
 8. Open the dashboard and press **Refresh**.
@@ -107,7 +128,8 @@ It reads the marketing tab and never changes it. It works out the columns on its
 
 The access key only keeps casual visitors out. It is **not** strong security:
 
-- Anyone with the key can read every lesson request, including names, phone numbers and emails, and can add team notes, change Jetski Needed and add lessons to the instructors' calendars. It can also read the marketing tab and flip its Completed switches. The key is stored in each team member's browser.
+- Anyone with the key can read every lesson request, including names, phone numbers and emails, and can add team notes, change Jetski Needed and add lessons to the instructors' calendars. The key is stored in each team member's browser.
 - The page carries `noindex`, so search engines shouldn't list it. The page itself is public, though. Only the data needs the key.
 - **Rotate the key whenever someone leaves the team.** Change `DASHBOARD_KEY` in Apps Script, deploy a new version (step 3), and share the new key. Old keys stop working immediately.
 - Don't share the key in public channels, and never commit it to this repository.
+- The marketing page has its own key (`MARKETING_KEY` in `marketing-api.gs`). Anyone with it can read the marketing tabs and flip the Completed switches, nothing else.

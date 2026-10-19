@@ -178,52 +178,101 @@
   .pill.danger { background: var(--danger-soft); color: var(--danger); }
   .footer { color: var(--muted); font-size: 12.5px; text-align: center; padding: 8px 0 24px; }
 
-  /* Filters row */
+
+  /* Toolbar */
   .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 20px; }
   .toolbar label { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 500; }
-  .toolbar select { height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); max-width: 220px; }
+  .toolbar select, .panel-head select {
+    height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); color: var(--text); max-width: 220px;
+  }
+  .panel-head select { height: 32px; }
   .toolbar .source { margin-left: auto; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-  .kpi-sub .up, .kpi-sub .down { font-weight: 600; color: var(--text); }
+  .section-title { margin: 4px 0 10px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 
-  /* Charts */
+  /* Scorecard */
+  .kpis.score { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .kpi-sub b { font-weight: 600; color: var(--text); }
+  .goal { margin-top: 10px; }
+  .goal-track { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .goal-track i { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+  .goal-text { margin-top: 4px; font-size: 12px; color: var(--muted); }
+
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .two > .panel { margin-bottom: 20px; }
+  .hint { color: var(--muted); font-size: 13px; padding: 0 18px 12px; }
+  .hint code { font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+
+  /* Funnel */
+  .funnel { list-style: none; margin: 0; padding: 0; }
+  .funnel li { padding: 6px 0; }
+  .funnel .row { display: flex; justify-content: space-between; gap: 10px; font-weight: 500; }
+  .funnel .row b { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .funnel .track { height: 22px; margin-top: 4px; }
+  .funnel .track i { display: block; height: 100%; min-width: 3px; border-radius: 0 4px 4px 0; background: var(--accent); }
+  .funnel .step { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
+
+  /* Bars (channels, season) */
+  .hbars { list-style: none; margin: 0; padding: 0; }
+  .hbars li { display: grid; grid-template-columns: minmax(80px, 130px) minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 6px 0; }
+  .hbars .name { overflow-wrap: anywhere; font-weight: 500; }
+  .hbars .track { height: 14px; }
+  .hbars .track i { display: block; height: 100%; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--accent); }
+  .hbars .val { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; white-space: nowrap; }
+  .hbars .share { color: var(--muted); font-weight: 500; margin-left: 6px; }
+
   .chart { position: relative; }
-  .bars { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 220px; margin-left: 48px; border-bottom: 1px solid var(--border); }
+  .bars { position: relative; display: flex; align-items: flex-end; gap: 6px; height: 220px; margin-left: 48px; border-bottom: 1px solid var(--border); }
   .gridline { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--border); pointer-events: none; }
   .gridline span { position: absolute; right: calc(100% + 8px); top: -9px; font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .bar { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; cursor: default; }
-  .bar i { display: block; width: 100%; max-width: 48px; margin: 0 auto; min-height: 1px; border-radius: 4px 4px 0 0; background: var(--accent); }
-  .bar:hover i, .bar:focus-visible i { background: var(--accent-hover); }
-  .bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .xlabels { position: relative; height: 20px; margin-left: 48px; margin-top: 6px; font-size: 12px; color: var(--muted); }
-  .xlabels span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
-  .xlabels span:first-child { transform: none; }
-  .xlabels span:last-child { transform: translateX(-100%); }
+  .grp { position: relative; flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; }
+  .grp:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .grp i { display: block; flex: 1; max-width: 18px; min-height: 0; border-radius: 4px 4px 0 0; }
+  .grp i.cur { background: var(--accent); }
+  .grp i.prev { background: var(--neutral); opacity: .35; }
+  .grp:hover i.cur { background: var(--accent-hover); }
+  .grp:hover i.prev { opacity: .5; }
+  .grp.sel { background: var(--accent-soft); border-radius: 6px 6px 0 0; }
+  .xlabels { display: flex; gap: 6px; margin-left: 48px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .xlabels span { flex: 1; min-width: 0; text-align: center; overflow: hidden; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 13px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+  .sw.cur { background: var(--accent); }
+  .sw.prev { background: var(--neutral); opacity: .35; }
   .tip {
     position: absolute; z-index: 5; pointer-events: none; padding: 6px 10px; border-radius: 8px;
     background: var(--text); color: var(--bg); font-size: 12.5px; white-space: nowrap; box-shadow: var(--shadow);
   }
   .tip b { font-weight: 600; }
 
-  .hbars { list-style: none; margin: 0; padding: 0; }
-  .hbars li { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 6px 0; }
-  .hbars .name { overflow-wrap: anywhere; font-weight: 500; }
-  .hbars .track { height: 14px; }
-  .hbars .track i { display: block; height: 100%; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--accent); }
-  .hbars .val { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
-  .hbars .share { color: var(--muted); font-weight: 500; margin-left: 6px; }
-  .two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; }
-  .two > .panel { margin-bottom: 20px; }
+  /* Reach */
+  .reach { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .reach > div { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  .reach .lbl { color: var(--muted); font-size: 13px; font-weight: 500; }
+  .reach .num { font-size: 22px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+  .reach .chg { font-size: 12.5px; color: var(--muted); }
+  .reach .chg b { color: var(--text); font-weight: 600; }
+  .reach ul { list-style: none; margin: 6px 0 0; padding: 6px 0 0; border-top: 1px solid var(--border); font-size: 12.5px; }
+  .reach li { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); }
+  .reach li b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
-  /* Table */
+  /* Tables */
   .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  th { position: sticky; top: 0; background: var(--surface-2); font-weight: 600; color: var(--muted); }
+  th { background: var(--surface-2); font-weight: 600; color: var(--muted); }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  td.wrap { white-space: normal; min-width: 180px; max-width: 360px; overflow-wrap: anywhere; }
+  td.wrap { white-space: normal; min-width: 200px; max-width: 380px; overflow-wrap: anywhere; }
   tbody tr:last-child td { border-bottom: 0; }
   tbody tr:hover td { background: var(--surface-2); }
+  tr.is-done td:not(.done-cell) { color: var(--muted); }
+  td.done-cell { width: 1%; }
+  .cal-stats { color: var(--muted); font-size: 13px; }
+  .cal-stats b { color: var(--text); font-weight: 600; }
   .more { color: var(--muted); font-size: 13px; padding-top: 10px; }
+  details.raw { padding: 0 18px 18px; }
+  details.raw summary { cursor: pointer; font-weight: 600; padding: 14px 0; }
 
   /* Completed switch (same look as Jetski Needed on the team dashboard) */
   .seg { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
@@ -235,34 +284,35 @@
   .seg button[data-done="yes"][aria-pressed="true"] { background: var(--ok); color: var(--surface); }
   .seg button:disabled { cursor: default; opacity: .6; }
   .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  tr.is-done td:not(.done-cell) { color: var(--muted); }
-  td.done-cell { width: 1%; }
   .team-msg { padding: 0 18px 10px; font-size: 12.5px; color: var(--danger); }
   .team-msg:empty { display: none; }
 
   @media (max-width: 960px) {
-    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .two { grid-template-columns: minmax(0, 1fr); gap: 0; }
   }
   @media (max-width: 640px) {
     .wrap { padding: 16px; }
     .kpis { gap: 10px; margin-bottom: 16px; }
+    .kpis.score { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kpi { padding: 12px 14px; }
     .kpi-value { font-size: 24px; }
     .panel, .two > .panel { margin-bottom: 16px; }
     .panel-head { padding: 14px 14px 10px; }
     .filters { padding: 0 14px 10px; }
     .panel-body { padding: 0 14px 14px; }
+    .hint { padding: 0 14px 10px; }
     .brand h1 { font-size: 17px; }
     .actions { width: 100%; }
     .actions .updated { flex: 1; }
-    .toolbar { gap: 8px; }
     .toolbar label { flex: 1 1 100%; justify-content: space-between; }
-    .toolbar select { width: 62%; max-width: none; min-width: 0; }
+    .toolbar select { width: 62%; max-width: none; }
     .toolbar .source { margin-left: 0; width: 100%; }
-    .bars { height: 180px; margin-left: 40px; gap: 1px; }
-    .xlabels { margin-left: 40px; }
-    .hbars li { grid-template-columns: minmax(70px, 110px) minmax(0, 1fr) auto; gap: 8px; }
+    .bars { height: 180px; margin-left: 40px; gap: 2px; }
+    .xlabels { margin-left: 40px; gap: 2px; font-size: 10.5px; }
+    .grp { gap: 1px; }
+    .hbars li { grid-template-columns: minmax(64px, 96px) minmax(0, 1fr) auto; gap: 8px; }
+    details.raw { padding: 0 14px 14px; }
+    .reach { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   }
 </style>
 </head>
@@ -275,7 +325,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2 20 9l-8 7-8-7 8-7Z"/><path d="M12 16c0 2-1 4-3 6"/></svg>
     </div>
     <h1>Marketing dashboard</h1>
-    <p>Kiteboarding St. Petersburg. Enter the team access key to continue.</p>
+    <p>Kiteboarding St. Petersburg. Enter the marketing access key to continue.</p>
     <label for="gate-key">Access key</label>
     <input class="field" id="gate-key" type="password" autocomplete="current-password" required>
     <button class="btn btn-primary" type="submit">Unlock</button>
@@ -318,79 +368,97 @@
     <span id="error-text"></span>
   </div>
 
-  <div class="toolbar" id="toolbar">
-    <label id="range-wrap">Period
-      <select id="range">
-        <option value="7">Last 7 days</option>
-        <option value="30">Last 30 days</option>
-        <option value="90">Last 90 days</option>
-        <option value="365">Last 12 months</option>
-        <option value="ytd">This year</option>
-        <option value="all">All time</option>
-      </select>
-    </label>
-    <label id="metric-wrap">Chart
-      <select id="metric"></select>
-    </label>
-    <label id="group-wrap">Break down by
-      <select id="group"></select>
-    </label>
+  <div class="toolbar">
+    <label id="month-wrap">Month <select id="month"></select></label>
     <span class="source" id="source"></span>
   </div>
 
-  <section class="kpis" id="kpis" aria-label="Summary"></section>
+  <!-- 1. Scorecard -->
+  <h2 class="section-title">Are we on track this month?</h2>
+  <section class="kpis score" id="kpis" aria-label="Scorecard"></section>
+  <div class="hint" id="score-hint" hidden></div>
 
   <div class="two">
-    <section class="panel" aria-labelledby="trend-h" id="trend-panel">
-      <div class="panel-head"><h2 id="trend-h">Over time</h2><span class="count" id="trend-sub"></span></div>
-      <div class="panel-body"><div class="chart" id="trend"></div></div>
+    <!-- 2. Funnel -->
+    <section class="panel" aria-labelledby="funnel-h" id="funnel-panel">
+      <div class="panel-head"><h2 id="funnel-h">Funnel</h2><span class="count" id="funnel-sub"></span></div>
+      <div class="hint">Where do we lose people? Each step shows how many made it from the step above.</div>
+      <div class="panel-body"><ul class="funnel" id="funnel"></ul></div>
     </section>
-    <section class="panel" aria-labelledby="split-h" id="split-panel">
-      <div class="panel-head"><h2 id="split-h">Breakdown</h2><span class="count" id="split-sub"></span></div>
-      <div class="panel-body"><ul class="hbars" id="split"></ul></div>
+
+    <!-- 3. Channels -->
+    <section class="panel" aria-labelledby="ch-h" id="ch-panel">
+      <div class="panel-head"><h2 id="ch-h">Channels</h2>
+        <select id="ch-metric" aria-label="Compare channels by"></select></div>
+      <div class="hint">What's working? Compare channels for the month.</div>
+      <div class="panel-body"><ul class="hbars" id="channels"></ul><div id="ch-table"></div></div>
     </section>
   </div>
 
-  <section class="panel" aria-labelledby="rows-h">
-    <div class="panel-head"><h2 id="rows-h">Marketing data<span class="count" id="rows-count"></span></h2></div>
+  <!-- 4. Content calendar -->
+  <section class="panel" aria-labelledby="cc-h" id="cc-panel">
+    <div class="panel-head"><h2 id="cc-h">Content calendar<span class="count" id="cc-count"></span></h2><span class="cal-stats" id="cc-stats"></span></div>
     <div class="filters">
       <div class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input class="field" id="rows-q" type="search" placeholder="Search" aria-label="Search marketing data">
+        <input class="field" id="cc-q" type="search" placeholder="Search posts" aria-label="Search the content calendar">
       </div>
-      <select class="status-filter" id="done-filter" aria-label="Filter by Completed">
+      <select class="status-filter" id="cc-filter" aria-label="Show">
+        <option value="todo">To do</option>
         <option value="">All</option>
-        <option value="no">Not completed</option>
-        <option value="yes">Completed</option>
+        <option value="done">Completed</option>
       </select>
     </div>
     <div class="team-msg" id="done-msg" role="alert"></div>
-    <div class="panel-body"><div id="rows"></div></div>
+    <div class="panel-body"><div id="content"></div></div>
   </section>
 
-  <div class="footer">Marketing numbers come from the team Google Sheet. Press Refresh after you update it.</div>
+  <!-- 5. Reputation and reach -->
+  <section class="panel" aria-labelledby="reach-h" id="reach-panel">
+    <div class="panel-head"><h2 id="reach-h">Reputation and reach</h2><span class="count" id="reach-sub"></span></div>
+    <div class="hint">Is the brand growing? Latest numbers for the month, compared with the month before.</div>
+    <div class="panel-body"><div class="reach" id="reach"></div></div>
+  </section>
+
+  <!-- 6. Season trend -->
+  <section class="panel" aria-labelledby="trend-h" id="trend-panel">
+    <div class="panel-head"><h2 id="trend-h">Season trend</h2>
+      <select id="trend-metric" aria-label="Chart"></select></div>
+    <div class="hint" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <span>How does this year compare with last year, month by month?</span><span class="legend" id="trend-legend"></span></div>
+    <div class="panel-body"><div class="chart" id="trend"></div></div>
+  </section>
+
+  <!-- All analytics rows -->
+  <section class="panel">
+    <details class="raw">
+      <summary>All analytics rows<span class="count" id="raw-count"></span></summary>
+      <div id="raw"></div>
+    </details>
+  </section>
+
+  <div class="footer">Marketing numbers come from the marketing Google Sheet. Press Refresh after you update it.</div>
 </div>
 
 <script>
 (function () {
   'use strict';
 
-  // The same Apps Script web app URL as index.html (it ends in /exec).
+  // The marketing Apps Script web app URL (marketing-api.gs, ends in /exec).
   const API_URL = 'https://script.google.com/macros/s/AKfycbxsFLnv4SUfJvNwkQfbvG0V1Eo__Z5M4yL0XMmE9KEchnKE_q5oWsYKqckhvj_6cUaX0w/exec';
 
-  // Shared with the team dashboard, so one unlock opens both pages.
-  const KEY_STORAGE = 'ksp-dashboard-key';
+  const KEY_STORAGE = 'ksp-marketing-key';
   const NAME_STORAGE = 'ksp-dashboard-name'; // the name typed on the team dashboard
-  const VIEW_STORAGE = 'ksp-marketing-view';
   const DAY_MS = 864e5;
   const TABLE_LIMIT = 300;
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const params = new URLSearchParams(location.search);
   const API_READY = /^https:\/\/\S+$/.test(API_URL.trim());
   const DEMO = params.has('demo') || !API_READY;
 
   const $ = (id) => document.getElementById(id);
-  const state = { model: null, loading: false, saving: {} };
+  const state = { model: null, loading: false, saving: {}, month: '', chMetric: '', trendMetric: '' };
   let memKey = '';
 
   // ---------- Storage (every call guarded) ----------
@@ -400,11 +468,6 @@
     clear() { try { localStorage.removeItem(KEY_STORAGE); } catch (e) { /* ignore */ } }
   };
   const getKey = () => memKey || keyStore.get();
-  const viewStore = {
-    get() { try { return JSON.parse(localStorage.getItem(VIEW_STORAGE) || '{}') || {}; } catch (e) { return {}; } },
-    set(v) { try { localStorage.setItem(VIEW_STORAGE, JSON.stringify(v)); } catch (e) { /* ignore */ } }
-  };
-  let view = viewStore.get();
   const myName = () => { try { return localStorage.getItem(NAME_STORAGE) || ''; } catch (e) { return ''; } };
 
   // ---------- Helpers ----------
@@ -414,312 +477,421 @@
   }
   const pad = (n) => String(n).padStart(2, '0');
   const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
   const isBlank = (v) => v == null || String(v).trim() === '';
   const norm = (h) => String(h).toLowerCase().replace(/[_\s]+/g, ' ').trim();
+  const monthKey = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1);
+  const keyDate = (k) => new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, 1);
+  const shiftKey = (k, n) => { const d = keyDate(k); return monthKey(new Date(d.getFullYear(), d.getMonth() + n, 1)); };
+  const monthLabel = (k, long) => {
+    const d = keyDate(k);
+    return long ? d.toLocaleString('en-US', { month: 'long', year: 'numeric' }) : MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+  };
 
-  // Parses yyyy-MM-dd[THH:mm[:ss]] (what the API sends), M/D/YYYY, or anything Date can read.
+  // Parses yyyy-MM-dd (what the API sends), M/D/YYYY, "Oct 2026", "October 2026".
   function parseDate(v) {
     if (isBlank(v) || typeof v === 'number') return null;
     const s = String(v).trim();
-    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
-    if (m) return new Date(+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+    let m = s.match(/^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?/);
+    if (m) return new Date(+m[1], m[2] - 1, +(m[3] || 1));
     m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})/);
     if (m) { let y = +m[3]; if (y < 100) y += 2000; return new Date(y, m[1] - 1, +m[2]); }
-    if (!/\d{4}/.test(s)) return null; // avoid Date.parse guessing at things like "May 5"
+    m = s.match(/^([a-z]{3,9})\.?,?\s+(\d{4})$/i);
+    if (m) { const i = monthIndex(m[1]); if (i >= 0) return new Date(+m[2], i, 1); }
+    if (!/\d{4}/.test(s)) return null;
     const t = Date.parse(s);
     return isNaN(t) ? null : new Date(t);
   }
+  function monthIndex(s) { return MONTHS.findIndex((x) => x.toLowerCase() === String(s).trim().slice(0, 3).toLowerCase()); }
 
   // "$1,200", "3.4%", "1,024" and plain numbers; anything else is null.
   function parseNum(v) {
     if (typeof v === 'number') return isFinite(v) ? v : null;
     if (isBlank(v)) return null;
     const s = String(v).trim().replace(/[$,\s]/g, '').replace(/%$/, '');
-    if (!/^-?\d+(\.\d+)?$/.test(s) && !/^-?\.\d+$/.test(s)) return null;
+    if (!/^-?(\d+(\.\d+)?|\.\d+)$/.test(s)) return null;
     return parseFloat(s);
   }
 
-  const fmt = (d, opts) => d.toLocaleString('en-US', opts);
-  const thisYear = new Date().getFullYear();
-  function fmtDay(d, forceYear) {
-    const o = { month: 'short', day: 'numeric' };
-    if (forceYear || d.getFullYear() !== thisYear) o.year = 'numeric';
-    return fmt(d, o);
-  }
-  function fmtTime(d) { return fmt(d, { hour: 'numeric', minute: '2-digit' }); }
-
-  function fmtNum(n, metric, compact) {
+  function fmtNum(n, kind, compact) {
     if (n == null || !isFinite(n)) return '–';
-    const money = metric && metric.money;
-    const pct = metric && metric.pct;
+    if (kind === 'pct') return (Math.round(n * 1000) / 10) + '%';
+    if (kind === 'rating') return n.toFixed(1);
+    if (kind === 'cost') return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const abs = Math.abs(n);
-    // Whole numbers stay whole ($157, 2,512); fractions get 1-2 decimals.
-    let digits = 0;
-    if (n % 1) digits = money || abs < 10 ? 2 : 1;
+    const money = kind === 'money';
     let s;
-    if (compact && abs >= 10000) {
-      s = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
-    } else {
-      s = n.toLocaleString('en-US', { minimumFractionDigits: money ? digits : 0, maximumFractionDigits: digits });
+    if (compact && abs >= 10000) s = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(abs);
+    else {
+      const digits = n % 1 ? (money || abs < 10 ? 2 : 1) : 0;
+      s = abs.toLocaleString('en-US', { minimumFractionDigits: money ? digits : 0, maximumFractionDigits: digits });
     }
-    if (money) s = (n < 0 ? '-$' : '$') + s.replace('-', '');
-    if (pct) s += '%';
-    return s;
+    return (n < 0 ? '-' : '') + (money ? '$' : '') + s;
   }
+  function fmtDay(d) {
+    const o = { month: 'short', day: 'numeric' };
+    if (d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+    return d.toLocaleString('en-US', o);
+  }
+  function fmtTime(d) { return d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' }); }
 
-  function findCol(cols, patterns) {
+  function findCol(headers, patterns, skip) {
+    const not = skip || [];
     for (const p of patterns) {
-      const hit = cols.find((c) => p.test(norm(c.name)));
+      const hit = headers.find((h) => not.indexOf(h) < 0 && p.test(norm(h)));
       if (hit) return hit;
     }
     return null;
   }
+  function table(t) {
+    return { tab: (t && t.tab) || '', headers: (t && t.headers) || [], rows: (t && t.rows) || [], error: (t && t.error) || '' };
+  }
 
   // ---------- Model ----------
-  // Works out from the headers and values which column is the date, which
-  // are numbers worth charting and which one splits rows into groups.
-  const METRIC_ORDER = [
-    /spend|cost|budget|ad ?spend/, /lead|inquir|enquir|sign ?up|form/, /booking|booked|conversion|sale|revenue|purchase/,
-    /click/, /impression|reach|view|visit|session/, /follower|subscriber|fan|member/, /engag|like|comment|share|save/
+  // Roles: what each Analytics column means. agg: sum over the month, or the
+  // latest value (per channel, added up; ratings averaged).
+  const ROLES = [
+    { key: 'spend', label: 'Ad spend', kind: 'money', agg: 'sum', re: [/^(ad )?spend|ad spend|budget|ad cost|^cost$|marketing cost/] },
+    { key: 'impressions', label: 'Impressions', agg: 'sum', re: [/impression/, /^reach$|post reach/] },
+    { key: 'visits', label: 'Website visits', agg: 'sum', re: [/visit|session|website|traffic/, /click/] },
+    { key: 'leads', label: 'Leads', agg: 'sum', re: [/lead|inquir|enquir|sign ?up|request|form/] },
+    { key: 'bookings', label: 'Bookings', agg: 'sum', re: [/booking|booked|conversion|new customer|purchases?$|lessons? sold/] },
+    { key: 'revenue', label: 'Revenue', kind: 'money', agg: 'sum', re: [/revenue|income|earning|sales/] },
+    { key: 'followers', label: 'Followers', agg: 'last', re: [/follower|subscriber|fans|page likes/] },
+    { key: 'reviews', label: 'Google reviews', agg: 'last', re: [/review/] },
+    { key: 'rating', label: 'Rating', kind: 'rating', agg: 'avg-last', re: [/rating|stars/] },
+    { key: 'calls', label: 'Calls', agg: 'sum', re: [/call/] },
+    { key: 'views', label: 'Profile views', agg: 'sum', re: [/profile view|gbp|business profile|listing view|views?$/] },
+    { key: 'engagement', label: 'Engagement', agg: 'sum', re: [/engag|likes|comments|shares|saves/] }
   ];
-  const AVG_RE = /rate|ctr|%|percent|avg|average|\bcpc\b|\bcpm\b|\bcpl\b|cost per|per lead|per click|roas|\broi\b/;
-  const LAST_RE = /follower|subscriber|fans|members|audience|list size|page likes/;
-  const MONEY_RE = /spend|cost|budget|revenue|sales|price|\$|\bcpc\b|\bcpm\b|\bcpl\b|amount|paid|income/;
-  const GROUP_RE = [/channel|platform|network|social/, /source|medium|utm/, /campaign/, /type|category|format|content/];
+  const REACH = ['followers', 'reviews', 'rating', 'calls', 'views', 'engagement'];
+
+  // Which month a row belongs to: a date column, or Month + Year columns.
+  function monthReader(headers, rows) {
+    const dateCol = findCol(headers, [/^month$/, /^date$/, /month/, /date/, /week/, /period/]);
+    const yearCol = findCol(headers, [/^year$/]);
+    if (!dateCol) return null;
+    const read = (r) => {
+      const v = r[dateCol];
+      const d = parseDate(v);
+      if (d) return monthKey(d);
+      const i = monthIndex(v);
+      const y = yearCol ? parseNum(r[yearCol]) : null;
+      return i >= 0 && y ? y + '-' + pad(i + 1) : null;
+    };
+    const hits = rows.filter((r) => read(r)).length;
+    return hits && hits >= rows.filter((r) => !isBlank(r[dateCol])).length * 0.6 ? { col: dateCol, yearCol, read } : null;
+  }
+
+  function buildAnalytics(t) {
+    const A = table(t);
+    const when = monthReader(A.headers, A.rows);
+    const used = when ? [when.col, when.yearCol].filter(Boolean) : [];
+    const numeric = A.headers.filter((h) => used.indexOf(h) < 0 && (() => {
+      let filled = 0, nums = 0;
+      A.rows.forEach((r) => { if (!isBlank(r[h])) { filled++; if (parseNum(r[h]) != null) nums++; } });
+      return filled && nums / filled >= 0.7;
+    })());
+    const textCols = A.headers.filter((h) => used.indexOf(h) < 0 && numeric.indexOf(h) < 0);
+    const group = findCol(textCols, [/channel|platform|network|social/, /source|medium/, /campaign/]);
+
+    const metrics = [];
+    const taken = [];
+    ROLES.forEach((role) => {
+      const col = findCol(numeric, role.re, taken.concat(numeric.filter((h) => /per |rate|ctr|%|cpc|cpl|cpm|roas|avg|average/.test(norm(h)) && role.key !== 'rating')));
+      if (col) { taken.push(col); metrics.push(Object.assign({}, role, { col, label: col })); }
+    });
+    // Any other number column still gets charted, summed.
+    numeric.filter((h) => taken.indexOf(h) < 0).forEach((h) => {
+      const n = norm(h);
+      const rate = /rate|ctr|%|percent|avg|average|per /.test(n);
+      metrics.push({ key: 'col:' + h, label: h, col: h, agg: rate ? 'avg' : 'sum', kind: rate && /rate|ctr|%|percent/.test(n) ? 'rawpct' : (/\$|cost|spend|revenue|cpc|cpl|cpm/.test(n) ? 'money' : '') });
+    });
+
+    const rows = when ? A.rows.map((r, i) => ({ i, raw: r, month: when.read(r), group: group ? String(r[group] || '').trim() : '' })).filter((r) => r.month) : [];
+    const months = Array.from(new Set(rows.map((r) => r.month))).sort();
+    return { tab: A.tab, error: A.error, headers: A.headers, raw: A.rows, rows, months, metrics, group, monthCol: when && when.col,
+      byKey: Object.fromEntries(metrics.map((m) => [m.key, m])) };
+  }
+
+  // One metric for a set of rows (usually one month).
+  function agg(rows, m) {
+    const vals = rows.map((r) => ({ r, v: parseNum(r.raw[m.col]) })).filter((x) => x.v != null);
+    if (!vals.length) return null;
+    if (m.agg === 'sum') return vals.reduce((s, x) => s + x.v, 0);
+    if (m.agg === 'avg') return vals.reduce((s, x) => s + x.v, 0) / vals.length;
+    const last = {};
+    vals.forEach((x) => { last[x.r.group] = x; }); // rows are in sheet order; later wins
+    const list = Object.keys(last).map((g) => last[g].v);
+    const sum = list.reduce((s, v) => s + v, 0);
+    return m.agg === 'avg-last' ? sum / list.length : sum;
+  }
+  const inMonth = (A, k) => A.rows.filter((r) => r.month === k);
+  function val(A, key, k) { const m = A.byKey[key]; return m ? agg(inMonth(A, k), m) : null; }
+
+  // Goals tab: a month column plus targets named like the Analytics columns
+  // ("Leads Goal", "Bookings target", "Revenue").
+  function buildGoals(t, A) {
+    const G = table(t);
+    const when = monthReader(G.headers, G.rows);
+    const out = {};
+    if (!when) return { tab: G.tab, error: G.error || (G.rows.length ? 'No month column found.' : ''), byMonth: out };
+    const cols = {};
+    G.headers.forEach((h) => {
+      if (h === when.col || h === when.yearCol) return;
+      const base = norm(h).replace(/\b(goal|goals|target|targets|budget)\b/g, '').trim() || norm(h);
+      const role = ROLES.find((r) => r.re.some((re) => re.test(base))) || (/budget/.test(norm(h)) ? ROLES[0] : null);
+      if (role && !cols[role.key]) cols[role.key] = h;
+    });
+    G.rows.forEach((r) => {
+      const k = when.read(r);
+      if (!k) return;
+      out[k] = out[k] || {};
+      Object.keys(cols).forEach((key) => { const v = parseNum(r[cols[key]]); if (v != null) out[k][key] = v; });
+    });
+    return { tab: G.tab, error: G.error, byMonth: out, keys: Object.keys(cols) };
+  }
+
+  function buildContent(t, done) {
+    const C = table(t);
+    const h = C.headers;
+    const dateCol = findCol(h, [/publish|post date|go live|scheduled|due/, /^date$/, /date/]);
+    const titleCol = findCol(h, [/title|topic|headline|post name|^post$|subject/, /idea|description|content|caption/], [dateCol]) ||
+      h.find((x) => x !== dateCol) || null;
+    const statusCol = findCol(h, [/status|stage/]);
+    const platCol = findCol(h, [/platform|channel|where|network/]);
+    const used = {};
+    const rows = C.rows.map((r, i) => {
+      const date = dateCol ? parseDate(r[dateCol]) : null;
+      const parts = [dateCol && r[dateCol], titleCol && r[titleCol], platCol && r[platCol]].filter((v) => !isBlank(v));
+      let id = parts.map((v) => String(v).trim().toLowerCase().replace(/\s+/g, ' ')).join('|').slice(0, 280) || 'row';
+      used[id] = (used[id] || 0) + 1;
+      if (used[id] > 1) id += '#' + used[id];
+      const rec = done[id];
+      const status = statusCol ? String(r[statusCol] || '') : '';
+      return { i, id, raw: r, date: date ? startOfDay(date) : null, title: titleCol ? String(r[titleCol] || '') : '',
+        done: rec ? !!rec.done : /^(done|published|posted|complete|completed|live)$/i.test(status.trim()),
+        doneBy: rec ? rec.by : '', doneAt: rec ? rec.updated : '',
+        hay: h.map((x) => String(r[x] == null ? '' : r[x])).join(' ').toLowerCase() };
+    });
+    return { tab: C.tab, error: C.error, headers: h, rows, dateCol, titleCol };
+  }
 
   function buildModel(data) {
-    const t = data.marketing || {};
-    const headers = t.headers || [];
-    const raw = t.rows || [];
-    const cols = headers.map((name) => {
-      let filled = 0, nums = 0, dates = 0, money = 0, pct = 0;
-      const seen = {};
-      raw.forEach((r) => {
-        const v = r[name];
-        if (isBlank(v)) return;
-        filled++;
-        const s = String(v).trim();
-        seen[s.toLowerCase()] = true;
-        if (parseNum(v) != null) { nums++; if (/^-?\$/.test(s)) money++; if (/%$/.test(s)) pct++; }
-        else if (parseDate(v)) dates++;
-      });
-      return { name, filled, distinct: Object.keys(seen).length,
-        isNum: filled > 0 && nums / filled >= 0.7, isDate: filled > 0 && dates / filled >= 0.6,
-        moneyVals: nums && money / nums > 0.5, pctVals: nums && pct / nums > 0.5 };
-    });
-
-    const dateCands = cols.filter((c) => c.isDate);
-    const dateCol = findCol(dateCands, [/^date$/, /\bdate\b/, /week/, /month/, /\bday\b/, /period|posted|published|start|sent/]) || dateCands[0] || null;
-
-    const metrics = cols.filter((c) => c.isNum && c !== dateCol && !/\b(id|year|#|no\.?|number|zip|phone)\b/.test(norm(c.name)))
-      .map((c) => {
-        const n = norm(c.name);
-        const pct = c.pctVals || /rate|ctr|%|percent/.test(n);
-        return { name: c.name, money: !pct && (c.moneyVals || MONEY_RE.test(n)), pct,
-          agg: AVG_RE.test(n) || pct ? 'avg' : LAST_RE.test(n) ? 'last' : 'sum' };
-      });
-    metrics.forEach((m) => {
-      const n = norm(m.name);
-      const i = METRIC_ORDER.findIndex((p) => p.test(n));
-      m.rank = i < 0 ? METRIC_ORDER.length : i;
-    });
-    const ranked = metrics.slice().sort((a, b) => a.rank - b.rank);
-
-    const groupCands = cols.filter((c) => !c.isNum && c !== dateCol && c.distinct >= 2 && c.distinct <= 20 &&
-      c.distinct < Math.max(3, c.filled * 0.8));
-    const groupGuess = findCol(groupCands, GROUP_RE) || groupCands[0] || null;
-    const textCols = cols.filter((c) => !c.isNum && c !== dateCol && c.filled);
-    const titleCol = findCol(textCols, [/task|title|post|item|idea|to ?do/, /campaign|name|description|content|caption|topic/]) ||
-      textCols.find((c) => c !== groupGuess) || textCols[0] || null;
-
-    // Each row's Completed switch is keyed by its date, title and group, so
-    // it stays with the row when numbers change or rows are added.
-    const used = {};
-    const rowId = (r) => {
-      const parts = [dateCol && r[dateCol.name], titleCol && r[titleCol.name], groupGuess && groupGuess !== titleCol && r[groupGuess.name]]
-        .filter((v) => !isBlank(v));
-      const base = (parts.length ? parts : textCols.map((c) => r[c.name]).filter((v) => !isBlank(v)))
-        .map((v) => String(v).trim().toLowerCase().replace(/\s+/g, ' ')).join('|').slice(0, 280) || 'row';
-      used[base] = (used[base] || 0) + 1;
-      return used[base] > 1 ? base + '#' + used[base] : base;
-    };
-    const done = data.done || {};
-
-    const rows = raw.map((r, i) => {
-      const date = dateCol ? parseDate(r[dateCol.name]) : null;
-      const vals = {};
-      metrics.forEach((m) => { vals[m.name] = parseNum(r[m.name]); });
-      const hay = headers.map((h) => String(r[h] == null ? '' : r[h])).join(' ').toLowerCase();
-      const id = rowId(r);
-      const rec = done[id];
-      const item = [titleCol && r[titleCol.name], dateCol && r[dateCol.name]].filter((v) => !isBlank(v)).join(' · ') || id;
-      return { i, id, item, raw: r, date: date ? startOfDay(date) : null, vals, hay, done: !!(rec && rec.done), doneBy: rec ? rec.by : '', doneAt: rec ? rec.updated : '' };
-    });
-
-    // Spacing between entries tells daily, weekly or monthly data apart.
-    const days = Array.from(new Set(rows.filter((r) => r.date).map((r) => r.date.getTime()))).sort((a, b) => a - b);
-    let gap = Infinity;
-    for (let i = 1; i < days.length; i++) gap = Math.min(gap, Math.round((days[i] - days[i - 1]) / DAY_MS));
-
+    const A = buildAnalytics(data.analytics);
+    const now = monthKey(new Date());
+    const past = A.months.filter((k) => k <= now);
     return {
-      headers, rows, metrics, ranked, dateCol: dateCol && dateCol.name, groups: groupCands.map((c) => c.name),
-      groupGuess: groupGuess && groupGuess.name, gap,
-      lastDate: days.length ? new Date(days[days.length - 1]) : null,
-      firstDate: days.length ? new Date(days[0]) : null,
-      error: t.error || '', tab: t.tab || '', file: t.file || '',
-      missing: !data.marketing,
+      A, G: buildGoals(data.goals, A), C: buildContent(data.content, data.done || {}),
+      file: data.file || '', sheets: data.sheets || [],
+      latest: past[past.length - 1] || A.months[A.months.length - 1] || now,
+      updated: data.updated ? parseDate(data.updated.slice(0, 10)) && new Date(data.updated) : null,
       doneReady: DEMO || !!data.done,
-      updated: data.updated ? parseDate(data.updated) : null
+      noAnalytics: !data.analytics
     };
   }
-
-  // Sum, average, or latest value (per group, then added up) of one metric.
-  function aggregate(rows, metric, groupCol) {
-    const vals = rows.filter((r) => r.vals[metric.name] != null);
-    if (!vals.length) return null;
-    if (metric.agg === 'sum') return vals.reduce((s, r) => s + r.vals[metric.name], 0);
-    if (metric.agg === 'avg') return vals.reduce((s, r) => s + r.vals[metric.name], 0) / vals.length;
-    const latest = {};
-    vals.forEach((r) => {
-      const g = groupCol ? String(r.raw[groupCol] || '') : '';
-      const cur = latest[g];
-      if (!cur || (r.date && (!cur.date || r.date >= cur.date)) || (!r.date && !cur.date && r.i > cur.i)) latest[g] = r;
-    });
-    return Object.keys(latest).reduce((s, g) => s + latest[g].vals[metric.name], 0);
-  }
-
-  // [from, to) for the chosen period, plus the period before it. "Last 30
-  // days" runs to today, and also keeps rows dated later (planned posts).
-  function periodBounds(m, range) {
-    if (!m.lastDate || range === 'all') return null;
-    const today = addDays(startOfDay(new Date()), 1);
-    const to = m.lastDate >= today ? addDays(m.lastDate, 1) : today;
-    if (range === 'ytd') {
-      const y = today.getFullYear();
-      return { from: new Date(y, 0, 1), to, prevFrom: new Date(y - 1, 0, 1), prevTo: new Date(y - 1, today.getMonth(), today.getDate()) };
-    }
-    const n = +range;
-    const from = addDays(today, -n);
-    return { from, to, prevFrom: addDays(from, -n), prevTo: from };
-  }
-  const inRange = (r, a, b) => r.date && r.date >= a && r.date < b;
 
   // ---------- Rendering ----------
-  function currentView() {
-    const m = state.model;
-    const metric = m.metrics.find((x) => x.name === view.metric) || m.ranked[0] || null;
-    const group = view.group === '' ? '' : (m.groups.indexOf(view.group) >= 0 ? view.group : (m.groupGuess || ''));
-    let range = view.range || '90';
-    const b = m.dateCol ? periodBounds(m, range) : null;
-    const rows = b ? m.rows.filter((r) => inRange(r, b.from, b.to)) : m.rows;
-    // Rows with no date (not scheduled yet) always stay in the list.
-    const listRows = b ? m.rows.filter((r) => !r.date || inRange(r, b.from, b.to)) : m.rows;
-    return { metric, group, range, bounds: b, rows, listRows };
-  }
-
   function render() {
     const m = state.model;
     if (!m) return;
-    $('updated').textContent = m.updated ? 'Updated ' + fmtDay(m.updated) + ', ' + fmtTime(m.updated) : '';
-    $('source').textContent = m.tab ? 'From ' + (m.file ? m.file + ' › ' : '') + m.tab : '';
-    if (!m.missing && !m.doneReady) {
-      showError('Update the dashboard script to use the Completed switches (see “Marketing dashboard” in the README).');
-    } else if (m.missing) {
-      showError('The dashboard script doesn’t send marketing data yet. Paste the new dashboard-api.gs into Apps Script and deploy a new version (see “Marketing dashboard” in the README).');
-    } else if (m.error) {
-      showError(m.error);
-    }
+    const A = m.A;
+    $('updated').textContent = m.updated && !isNaN(m.updated) ? 'Updated ' + fmtDay(m.updated) + ', ' + fmtTime(m.updated) : '';
+    $('source').textContent = m.file ? 'From ' + m.file : '';
+    if (m.noAnalytics) showError('This page needs the marketing script (marketing-api.gs). See “Marketing dashboard” in the README.');
 
-    // Controls
-    $('range-wrap').hidden = !m.dateCol;
-    $('range').value = view.range || '90';
-    $('metric-wrap').hidden = !m.metrics.length;
-    $('metric').innerHTML = m.ranked.map((x) => '<option value="' + esc(x.name) + '">' + esc(x.name) + '</option>').join('');
-    $('group-wrap').hidden = !m.groups.length || !m.metrics.length;
-    $('group').innerHTML = '<option value="">Nothing</option>' + m.groups.map((g) => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('');
-    const v = currentView();
-    if (v.metric) $('metric').value = v.metric.name;
-    $('group').value = v.group;
+    const months = A.months.slice().reverse();
+    if (!state.month || months.indexOf(state.month) < 0) state.month = m.latest;
+    $('month-wrap').hidden = !months.length;
+    $('month').innerHTML = months.map((k) => '<option value="' + k + '">' + esc(monthLabel(k, true)) + '</option>').join('');
+    $('month').value = state.month;
 
-    renderKpis(v);
-    renderTrend(v);
-    renderSplit(v);
-    renderRows(v);
+    renderScore();
+    renderFunnel();
+    renderChannels();
+    // One full-width panel when only the funnel or only the channels apply.
+    $('funnel-panel').parentNode.style.gridTemplateColumns = $('funnel-panel').hidden || $('ch-panel').hidden ? 'minmax(0, 1fr)' : '';
+    renderContent();
+    renderReach();
+    renderTrend();
+    renderRaw();
   }
 
-  function periodLabel(range) {
-    return { '7': 'last 7 days', '30': 'last 30 days', '90': 'last 90 days', '365': 'last 12 months', ytd: 'this year', all: 'all time' }[range] || '';
+  function tabHint(t, name, what) {
+    if (!t.error) return '';
+    const list = state.model.sheets.length ? ' Tabs in your file: ' + state.model.sheets.join(', ') + '.' : '';
+    return esc(t.error + ' ' + what + list).replace(name, '<code>' + esc(name) + '</code>');
   }
 
-  function renderKpis(v) {
-    const m = state.model;
-    const b = v.bounds;
-    const prev = b ? m.rows.filter((r) => inRange(r, b.prevFrom, b.prevTo)) : [];
+  function change(now, before, lowerIsBetter) {
+    if (now == null || before == null || before === 0) return '';
+    const p = Math.round((now - before) / Math.abs(before) * 100);
+    const arrow = p > 0 ? '▲' : p < 0 ? '▼' : '';
+    return '<b>' + arrow + ' ' + Math.abs(p) + '%</b> vs ' + esc(MONTHS[keyDate(shiftKey(state.month, -1)).getMonth()]) + (lowerIsBetter ? ' (lower is better)' : '');
+  }
+
+  function renderScore() {
+    const m = state.model, A = m.A, k = state.month, prev = shiftKey(k, -1);
+    const goals = m.G.byMonth[k] || {};
     const tiles = [];
-    const picks = m.ranked.slice(0, 3);
-    const spend = m.metrics.find((x) => x.money && x.agg === 'sum' && /spend|cost|budget/.test(norm(x.name)));
-    const leads = m.metrics.find((x) => x.agg === 'sum' && /lead|inquir|enquir|sign ?up/.test(norm(x.name)));
-    const cpl = spend && leads && !m.metrics.some((x) => /cost per lead|\bcpl\b/.test(norm(x.name)));
-    if (cpl && picks.length === 3) picks.pop();
-
-    const label = b ? periodLabel(v.range) : (m.dateCol ? 'all time' : 'all rows');
-    function change(now, before) {
-      if (!b || now == null || before == null || before === 0) return '';
-      const pctChg = Math.round((now - before) / Math.abs(before) * 100);
-      const arrow = pctChg > 0 ? '▲' : pctChg < 0 ? '▼' : '';
-      return ' · <span class="' + (pctChg >= 0 ? 'up' : 'down') + '">' + arrow + ' ' + Math.abs(pctChg) + '%</span> vs previous';
+    const ratio = (a, b, key) => { const x = val(A, a, key), y = val(A, b, key); return x != null && y ? x / y : null; };
+    function tile(label, now, before, kind, goal, lowerIsBetter) {
+      let goalHtml = '';
+      if (goal != null && now != null) {
+        const pct = goal ? now / goal : 0;
+        goalHtml = '<div class="goal"><div class="goal-track"><i style="width:' + Math.min(100, Math.round(pct * 100)) + '%"></i></div>' +
+          '<div class="goal-text">' + Math.round(pct * 100) + '% of ' + esc(fmtNum(goal, kind)) + ' goal</div></div>';
+      }
+      tiles.push('<div class="kpi"><div class="kpi-label">' + esc(label) + '</div><div class="kpi-value">' + esc(fmtNum(now, kind)) +
+        '</div><div class="kpi-sub">' + (change(now, before, lowerIsBetter) || esc(monthLabel(k))) + '</div>' + goalHtml + '</div>');
     }
-    picks.forEach((x, i) => {
-      const now = aggregate(v.rows, x, v.group || m.groupGuess);
-      const before = b ? aggregate(prev, x, v.group || m.groupGuess) : null;
-      const how = x.agg === 'avg' ? 'Average, ' : x.agg === 'last' ? 'Latest, ' : '';
-      tiles.push({ label: x.name, value: fmtNum(now, x), sub: esc(how + label) + change(now, before), accent: i === 0 });
+    const b = A.byKey;
+    if (b.leads) tile('Leads', val(A, 'leads', k), val(A, 'leads', prev), '', goals.leads);
+    if (b.bookings) tile('Booked lessons', val(A, 'bookings', k), val(A, 'bookings', prev), '', goals.bookings);
+    if (b.leads && b.bookings) tile('Conversion rate', ratio('bookings', 'leads', k), ratio('bookings', 'leads', prev), 'pct');
+    if (b.revenue) tile('Revenue', val(A, 'revenue', k), val(A, 'revenue', prev), 'money', goals.revenue);
+    if (b.spend && (b.bookings || b.leads)) {
+      const per = b.bookings ? 'bookings' : 'leads';
+      tile('Cost per ' + (per === 'bookings' ? 'booking' : 'lead'), ratio('spend', per, k), ratio('spend', per, prev), 'cost', null, true);
+    }
+    if (tiles.length < 3) {
+      A.metrics.filter((x) => ['leads', 'bookings', 'revenue'].indexOf(x.key) < 0 && REACH.indexOf(x.key) < 0).slice(0, 4 - tiles.length)
+        .forEach((x) => tile(x.label, agg(inMonth(A, k), x), agg(inMonth(A, prev), x), x.kind, goals[x.key]));
+    }
+    $('kpis').innerHTML = tiles.join('') || '<div class="kpi"><div class="kpi-label">Analytics</div><div class="kpi-value">–</div><div class="kpi-sub">No numbers yet</div></div>';
+    const hint = A.error ? tabHint(A, ANALYTICS(), 'Add a tab with one row per month (and channel): Month, Channel, Spend, Website Visits, Leads, Bookings, Revenue.')
+      : !A.rows.length && A.headers.length ? 'Couldn’t find a Month or Date column in ' + esc(A.tab) + '.'
+      : !m.G.tab || m.G.error ? 'Tip: add a <code>Goals</code> tab (Month, Leads Goal, Bookings Goal, Revenue Goal) to see progress bars here.' : '';
+    $('score-hint').innerHTML = hint;
+    $('score-hint').hidden = !hint;
+  }
+  const ANALYTICS = () => state.model.A.tab || 'Analytics';
+
+  function renderFunnel() {
+    const A = state.model.A, k = state.month;
+    const steps = ['impressions', 'visits', 'leads', 'bookings'].filter((s) => A.byKey[s])
+      .map((s) => ({ label: A.byKey[s].label, v: val(A, s, k) })).filter((s) => s.v != null);
+    $('funnel-panel').hidden = steps.length < 2;
+    if (steps.length < 2) return;
+    $('funnel-sub').textContent = monthLabel(k);
+    const top = Math.max(...steps.map((s) => s.v)) || 1;
+    // Square-root widths keep small steps visible next to big impression counts.
+    $('funnel').innerHTML = steps.map((s, i) => {
+      const w = Math.max(1, Math.sqrt(s.v / top) * 100);
+      const prev = steps[i - 1];
+      return '<li><div class="row"><span>' + esc(s.label) + '</span><b>' + esc(fmtNum(s.v)) + '</b></div>' +
+        '<div class="track"><i style="width:' + w + '%"></i></div>' +
+        (prev && prev.v ? '<p class="step">' + fmtNum(s.v / prev.v, 'pct') + ' of ' + esc(prev.label.toLowerCase()) + '</p>' : '') + '</li>';
+    }).join('');
+  }
+
+  function renderChannels() {
+    const A = state.model.A, k = state.month;
+    const show = !!A.group;
+    $('ch-panel').hidden = !show;
+    if (!show) return;
+    const choices = ['bookings', 'leads', 'revenue', 'spend', 'visits', 'followers'].filter((x) => A.byKey[x]).map((x) => A.byKey[x]);
+    A.metrics.filter((x) => choices.indexOf(x) < 0 && x.agg === 'sum').forEach((x) => choices.push(x));
+    if (!choices.length) { $('ch-panel').hidden = true; return; }
+    if (!choices.some((c) => c.key === state.chMetric)) state.chMetric = choices[0].key;
+    $('ch-metric').innerHTML = choices.map((c) => '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>').join('');
+    $('ch-metric').value = state.chMetric;
+    const metric = A.byKey[state.chMetric];
+    $('ch-h').textContent = 'Channels';
+    const by = {};
+    inMonth(A, k).forEach((r) => { (by[r.group || '(blank)'] = by[r.group || '(blank)'] || []).push(r); });
+    const items = Object.keys(by).map((g) => ({ name: g, v: agg(by[g], metric), rows: by[g] })).filter((x) => x.v != null).sort((a, b) => b.v - a.v);
+    const total = items.reduce((s, x) => s + Math.max(0, x.v), 0);
+    const top = Math.max(0, ...items.map((x) => x.v));
+    $('channels').innerHTML = items.length ? items.map((x) =>
+      '<li><span class="name">' + esc(x.name) + '</span><span class="track"><i style="width:' + (top > 0 ? Math.max(0, x.v) / top * 100 : 0) + '%"></i></span>' +
+      '<span class="val">' + esc(fmtNum(x.v, metric.kind)) + (metric.agg === 'sum' && total > 0 ? '<span class="share">' + Math.round(x.v / total * 100) + '%</span>' : '') + '</span></li>').join('')
+      : '<li class="empty">No ' + esc(metric.label.toLowerCase()) + ' for ' + esc(monthLabel(k)) + '.</li>';
+    // Cost per booking (or lead) by channel, when spend is tracked.
+    const per = A.byKey.bookings ? 'bookings' : A.byKey.leads ? 'leads' : '';
+    if (A.byKey.spend && per && items.length) {
+      const rows = items.map((x) => {
+        const s = agg(x.rows, A.byKey.spend), n = agg(x.rows, A.byKey[per]);
+        return '<tr><td>' + esc(x.name) + '</td><td class="num">' + esc(fmtNum(s, 'money')) + '</td><td class="num">' + esc(fmtNum(n)) +
+          '</td><td class="num">' + esc(s != null && n ? fmtNum(s / n, 'cost') : '–') + '</td></tr>';
+      }).join('');
+      $('ch-table').innerHTML = '<div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>Channel</th><th class="num">Spend</th><th class="num">' +
+        esc(A.byKey[per].label) + '</th><th class="num">Cost per ' + (per === 'bookings' ? 'booking' : 'lead') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    } else $('ch-table').innerHTML = '';
+  }
+
+  function renderContent() {
+    const m = state.model, C = m.C;
+    const box = $('content');
+    if (!C.headers.length) {
+      $('cc-count').textContent = '';
+      $('cc-stats').textContent = '';
+      box.innerHTML = '<div class="empty">' + (C.error ? tabHint(C, C.tab || 'Blog Posts Update', 'Set CONTENT_TAB in marketing-api.gs to your content tab.') : 'No posts yet.') + '</div>';
+      return;
+    }
+    const today = startOfDay(new Date());
+    const soon = new Date(today.getTime() + 7 * DAY_MS);
+    const overdue = C.rows.filter((r) => !r.done && r.date && r.date < today).length;
+    const dueSoon = C.rows.filter((r) => !r.done && r.date && r.date >= today && r.date <= soon).length;
+    const doneN = C.rows.filter((r) => r.done).length;
+    $('cc-stats').innerHTML = [overdue ? '<b>' + overdue + '</b> overdue' : '', dueSoon ? '<b>' + dueSoon + '</b> due this week' : '',
+      '<b>' + doneN + '</b> of ' + C.rows.length + ' completed'].filter(Boolean).join(' · ');
+
+    const q = $('cc-q').value.trim().toLowerCase();
+    const f = $('cc-filter').value;
+    let list = C.rows.filter((r) => (!q || r.hay.indexOf(q) >= 0) && (!f || (f === 'done') === r.done));
+    // To do: oldest due first (overdue on top), undated last. Done: newest first.
+    list = list.slice().sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      const ad = a.date ? a.date.getTime() : Infinity, bd = b.date ? b.date.getTime() : Infinity;
+      return a.done ? (bd === Infinity ? -1 : bd) - (ad === Infinity ? -1 : ad) : ad - bd;
     });
-    if (cpl) {
-      const per = (rows) => { const s = aggregate(rows, spend), l = aggregate(rows, leads); return s != null && l ? s / l : null; };
-      const now = per(v.rows);
-      tiles.push({ label: 'Cost per ' + leads.name.replace(/s$/i, '').toLowerCase(), value: fmtNum(now, { money: true }),
-        sub: esc(spend.name + ' ÷ ' + leads.name) + change(now, b ? per(prev) : null) });
-    }
-    const doneCount = v.listRows.filter((r) => r.done).length;
-    tiles.push({ label: 'Completed', value: doneCount + ' of ' + v.listRows.length,
-      sub: v.listRows.length ? Math.round(doneCount / v.listRows.length * 100) + '% marked Yes, ' + esc(label) : (m.error ? 'Couldn’t read the marketing tab' : 'No rows ' + esc(label)) });
-    $('kpis').innerHTML = tiles.map((t) =>
-      '<div class="kpi' + (t.accent ? ' kpi-accent' : '') + '"><div class="kpi-label">' + esc(t.label) +
-      '</div><div class="kpi-value">' + esc(t.value) + '</div><div class="kpi-sub">' + t.sub + '</div></div>').join('');
-  }
+    $('cc-count').textContent = list.length === C.rows.length ? String(list.length) : list.length + ' of ' + C.rows.length;
+    if (!list.length) { box.innerHTML = '<div class="empty">' + (q ? 'Nothing matches that search.' : f === 'todo' ? 'Everything is done. Nice work.' : 'Nothing here yet.') + '</div>'; return; }
 
-  // Buckets the period into days, weeks (from Monday) or months.
-  function buckets(v) {
-    const m = state.model;
-    const dated = v.rows.filter((r) => r.date);
-    if (!dated.length) return null;
-    const from = v.bounds ? v.bounds.from : m.firstDate;
-    const to = v.bounds ? addDays(v.bounds.to, -1) : m.lastDate;
-    const span = Math.round((to - from) / DAY_MS) + 1;
-    let unit = m.gap >= 28 ? 'month' : m.gap >= 7 ? 'week' : 'day';
-    if (unit === 'day' && span > 45) unit = 'week';
-    if (unit === 'week' && span > 26 * 7) unit = 'month';
-    const keyOf = (d) => {
-      if (unit === 'month') return new Date(d.getFullYear(), d.getMonth(), 1);
-      if (unit === 'week') return addDays(d, -((d.getDay() + 6) % 7));
-      return d;
+    const off = (r) => !m.doneReady || state.saving[r.id] ? ' disabled' : '';
+    const label = (r) => r.title || (r.date ? fmtDay(r.date) : 'this row');
+    const doneCell = (r) => '<td class="done-cell"><span class="seg" role="group" aria-label="Completed: ' + esc(label(r)) + '"' +
+      (r.doneBy || r.doneAt ? ' title="' + esc('Set by ' + (r.doneBy || 'someone') + (r.doneAt ? ', ' + r.doneAt : '')) + '"' : '') + '>' +
+      '<button type="button" data-id="' + esc(r.id) + '" data-done="no" aria-pressed="' + !r.done + '"' + off(r) + '>No</button>' +
+      '<button type="button" data-id="' + esc(r.id) + '" data-done="yes" aria-pressed="' + r.done + '"' + off(r) + '>Yes</button></span></td>';
+    const flag = (r) => r.done || !r.date ? '' : r.date < today ? ' <span class="pill danger">Overdue</span>' : r.date <= soon ? ' <span class="pill warn">Due soon</span>' : '';
+    const cell = (h, r) => {
+      const v = r.raw[h];
+      if (h === C.dateCol && r.date) return '<td>' + esc(fmtDay(r.date)) + flag(r) + '</td>';
+      const s = String(v == null ? '' : v);
+      if (/^https?:\/\//.test(s)) return '<td><a href="' + esc(s) + '" target="_blank" rel="noopener">Open</a></td>';
+      return '<td' + (s.length > 40 || h === C.titleCol ? ' class="wrap"' : '') + '>' + (h === C.titleCol ? '<b>' + esc(s) + '</b>' : esc(s)) + '</td>';
     };
-    const step = (d) => unit === 'month' ? new Date(d.getFullYear(), d.getMonth() + 1, 1) : addDays(d, unit === 'week' ? 7 : 1);
-    const list = [];
-    for (let d = keyOf(from); d <= to; d = step(d)) list.push({ start: d, rows: [] });
-    const index = {};
-    list.forEach((x) => { index[x.start.getTime()] = x; });
-    dated.forEach((r) => { const x = index[keyOf(r.date).getTime()]; if (x) x.rows.push(r); });
-    // A week or month that only partly falls in the period can start empty.
-    while (list.length > 1 && !list[0].rows.length) list.shift();
-    return { unit, list };
+    const cols = C.headers.slice();
+    if (C.dateCol) { cols.splice(cols.indexOf(C.dateCol), 1); cols.unshift(C.dateCol); }
+    box.innerHTML = '<div class="table-wrap"><table><thead><tr><th scope="col">Completed</th>' +
+      cols.map((h) => '<th scope="col">' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' +
+      list.slice(0, TABLE_LIMIT).map((r) => '<tr' + (r.done ? ' class="is-done"' : '') + '>' + doneCell(r) + cols.map((h) => cell(h, r)).join('') + '</tr>').join('') +
+      '</tbody></table></div>' + (list.length > TABLE_LIMIT ? '<div class="more">Showing ' + TABLE_LIMIT + '. Search to find others.</div>' : '');
   }
 
-  function bucketLabel(d, unit, long) {
-    if (unit === 'month') return fmt(d, { month: 'short', year: long || d.getFullYear() !== thisYear ? 'numeric' : undefined });
-    return (unit === 'week' && long ? 'Week of ' : '') + fmtDay(d, long && d.getFullYear() !== thisYear);
+  function renderReach() {
+    const A = state.model.A, k = state.month, prev = shiftKey(k, -1);
+    const list = REACH.map((key) => A.byKey[key]).filter(Boolean);
+    $('reach-panel').hidden = !list.length;
+    if (!list.length) return;
+    $('reach-sub').textContent = monthLabel(k);
+    $('reach').innerHTML = list.map((mt) => {
+      const now = agg(inMonth(A, k), mt), before = agg(inMonth(A, prev), mt);
+      let diff = '';
+      if (now != null && before != null) {
+        const d = now - before;
+        diff = (Math.abs(d) < 0.05 ? 'No change' : '<b>' + (d > 0 ? '+' : '−') + esc(fmtNum(Math.abs(d), mt.kind)) + '</b>') + ' vs ' + esc(MONTHS[keyDate(prev).getMonth()]);
+      }
+      let split = '';
+      if (A.group && mt.agg !== 'avg-last') {
+        const by = {};
+        inMonth(A, k).forEach((r) => { (by[r.group] = by[r.group] || []).push(r); });
+        const parts = Object.keys(by).map((g) => ({ g, v: agg(by[g], mt) })).filter((x) => x.v != null && x.g).sort((a, b) => b.v - a.v);
+        if (parts.length > 1) split = '<ul>' + parts.map((x) => '<li><span>' + esc(x.g) + '</span><b>' + esc(fmtNum(x.v, mt.kind)) + '</b></li>').join('') + '</ul>';
+      }
+      return '<div><div class="lbl">' + esc(mt.label) + '</div><div class="num">' + esc(fmtNum(now, mt.kind)) + '</div><div class="chg">' + (diff || '&nbsp;') + '</div>' + split + '</div>';
+    }).join('');
   }
 
   function niceMax(n) {
@@ -729,122 +901,78 @@
     return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
   }
 
-  function renderTrend(v) {
-    const m = state.model;
-    const box = $('trend');
-    const show = m.dateCol && v.metric;
-    $('trend-panel').hidden = !show;
-    if (!show) return;
-    const bk = buckets(v);
-    $('trend-h').textContent = v.metric.name + ' over time';
-    if (!bk) { box.innerHTML = '<div class="empty">No entries in this period.</div>'; $('trend-sub').textContent = ''; return; }
-    $('trend-sub').textContent = 'By ' + bk.unit;
-    const points = bk.list.map((x) => ({ start: x.start, value: aggregate(x.rows, v.metric, v.group || m.groupGuess) }));
-    const top = niceMax(Math.max(0, ...points.map((p) => p.value || 0)));
-    const ticks = [top, top / 2, 0];
-    const n = points.length;
-    const xIdx = n <= 3 ? points.map((_, i) => i) : [0, Math.floor((n - 1) / 2), n - 1];
-    box.innerHTML =
-      '<div class="bars" role="list" aria-label="' + esc(v.metric.name + ' by ' + bk.unit) + '">' +
-      ticks.map((t) => '<div class="gridline" style="bottom:' + (t / top * 100) + '%"><span>' + esc(fmtNum(t, v.metric, true)) + '</span></div>').join('') +
-      points.map((p, i) => {
-        const h = p.value > 0 ? Math.max(0.5, p.value / top * 100) : 0;
-        const text = bucketLabel(p.start, bk.unit, true) + ': ' + (p.value == null ? 'no entry' : fmtNum(p.value, v.metric));
-        return '<div class="bar" role="listitem" tabindex="0" data-i="' + i + '" aria-label="' + esc(text) + '"><i style="height:' + h + '%"></i></div>';
-      }).join('') + '</div>' +
-      '<div class="xlabels" aria-hidden="true">' + xIdx.map((i) =>
-        '<span style="left:' + ((i + 0.5) / n * 100) + '%">' + esc(bucketLabel(points[i].start, bk.unit)) + '</span>').join('') + '</div>' +
+  function renderTrend() {
+    const A = state.model.A;
+    const choices = ['bookings', 'leads', 'revenue', 'visits', 'spend', 'followers'].filter((x) => A.byKey[x]).map((x) => A.byKey[x]);
+    A.metrics.forEach((x) => { if (choices.indexOf(x) < 0) choices.push(x); });
+    $('trend-panel').hidden = !choices.length || !A.months.length;
+    if ($('trend-panel').hidden) return;
+    if (!choices.some((c) => c.key === state.trendMetric)) state.trendMetric = choices[0].key;
+    $('trend-metric').innerHTML = choices.map((c) => '<option value="' + esc(c.key) + '">' + esc(c.label) + '</option>').join('');
+    $('trend-metric').value = state.trendMetric;
+    const mt = A.byKey[state.trendMetric];
+    const year = +state.month.slice(0, 4);
+    const pts = MONTHS.map((name, i) => {
+      const k = year + '-' + pad(i + 1), pk = (year - 1) + '-' + pad(i + 1);
+      return { name, k, cur: agg(inMonth(A, k), mt), prev: agg(inMonth(A, pk), mt) };
+    });
+    const hasPrev = pts.some((p) => p.prev != null);
+    $('trend-legend').innerHTML = '<span><i class="sw cur"></i>' + year + '</span>' + (hasPrev ? '<span><i class="sw prev"></i>' + (year - 1) + '</span>' : '');
+    const top = niceMax(Math.max(0, ...pts.map((p) => Math.max(p.cur || 0, p.prev || 0))));
+    const h = (v) => v > 0 ? Math.max(0.5, v / top * 100) : 0;
+    $('trend').innerHTML = '<div class="bars">' +
+      [top, top / 2, 0].map((t) => '<div class="gridline" style="bottom:' + (t / top * 100) + '%"><span>' + esc(fmtNum(t, mt.kind, true)) + '</span></div>').join('') +
+      pts.map((p, i) => '<div class="grp' + (p.k === state.month ? ' sel' : '') + '" tabindex="0" data-i="' + i + '" aria-label="' +
+        esc(p.name + ' ' + year + ': ' + fmtNum(p.cur, mt.kind) + (hasPrev ? ', ' + (year - 1) + ': ' + fmtNum(p.prev, mt.kind) : '')) + '">' +
+        '<i class="cur" style="height:' + h(p.cur) + '%"></i>' + (hasPrev ? '<i class="prev" style="height:' + h(p.prev) + '%"></i>' : '') + '</div>').join('') +
+      '</div><div class="xlabels" aria-hidden="true">' + pts.map((p) => '<span>' + p.name.slice(0, 3) + '</span>').join('') + '</div>' +
       '<div class="tip" id="tip" hidden></div>';
-    box._points = points; box._unit = bk.unit; box._metric = v.metric;
+    $('trend')._pts = pts; $('trend')._mt = mt; $('trend')._year = year; $('trend')._hasPrev = hasPrev;
   }
 
-  function showTip(bar) {
+  function showTip(el) {
     const box = $('trend');
-    const p = box._points && box._points[+bar.dataset.i];
+    const p = box._pts && box._pts[+el.dataset.i];
     const tip = $('tip');
     if (!p || !tip) return;
-    tip.innerHTML = esc(bucketLabel(p.start, box._unit, true)) + '<br><b>' + esc(p.value == null ? 'No entry' : fmtNum(p.value, box._metric)) + '</b>';
+    const y = box._year;
+    tip.innerHTML = '<b>' + esc(p.name) + '</b><br>' + y + ': <b>' + esc(p.cur == null ? 'no data' : fmtNum(p.cur, box._mt.kind)) + '</b>' +
+      (box._hasPrev ? '<br>' + (y - 1) + ': <b>' + esc(p.prev == null ? 'no data' : fmtNum(p.prev, box._mt.kind)) + '</b>' : '');
     tip.hidden = false;
-    const br = bar.getBoundingClientRect(), cr = box.getBoundingClientRect();
-    const left = Math.min(Math.max(br.left - cr.left + br.width / 2 - tip.offsetWidth / 2, 0), cr.width - tip.offsetWidth);
-    tip.style.left = left + 'px';
-    tip.style.top = '-8px';
+    const br = el.getBoundingClientRect(), cr = box.getBoundingClientRect();
+    tip.style.left = Math.min(Math.max(br.left - cr.left + br.width / 2 - tip.offsetWidth / 2, 0), cr.width - tip.offsetWidth) + 'px';
+    tip.style.top = '-12px';
   }
 
-  function renderSplit(v) {
-    const m = state.model;
-    const show = v.group && v.metric;
-    $('split-panel').hidden = !show;
-    $('trend-panel').parentNode.style.gridTemplateColumns = show && !$('trend-panel').hidden ? '' : 'minmax(0, 1fr)';
-    if (!show) return;
-    $('split-h').textContent = v.metric.name + ' by ' + v.group.toLowerCase();
-    $('split-sub').textContent = v.bounds ? periodLabel(v.range) : '';
-    const by = {};
-    v.rows.forEach((r) => {
-      const g = String(r.raw[v.group] == null ? '' : r.raw[v.group]).trim() || '(blank)';
-      (by[g] = by[g] || []).push(r);
-    });
-    let items = Object.keys(by).map((g) => ({ name: g, value: aggregate(by[g], v.metric, v.group) }))
-      .filter((x) => x.value != null).sort((a, b) => b.value - a.value);
-    if (items.length > 8 && v.metric.agg !== 'avg') {
-      const rest = items.slice(7);
-      items = items.slice(0, 7).concat([{ name: 'Other (' + rest.length + ')', value: rest.reduce((s, x) => s + x.value, 0) }]);
-    }
-    const total = items.reduce((s, x) => s + Math.max(0, x.value), 0);
-    const top = Math.max(0, ...items.map((x) => x.value));
-    $('split').innerHTML = items.length ? items.map((x) =>
-      '<li><span class="name">' + esc(x.name) + '</span><span class="track"><i style="width:' + (top > 0 ? Math.max(0, x.value) / top * 100 : 0) + '%"></i></span>' +
-      '<span class="val">' + esc(fmtNum(x.value, v.metric)) +
-      (v.metric.agg !== 'avg' && total > 0 ? '<span class="share">' + Math.round(Math.max(0, x.value) / total * 100) + '%</span>' : '') + '</span></li>').join('')
-      : '<li class="empty">No entries in this period.</li>';
+  function renderRaw() {
+    const A = state.model.A;
+    $('raw-count').textContent = A.raw.length ? String(A.raw.length) : '';
+    if (!A.headers.length) { $('raw').innerHTML = '<div class="empty">No analytics rows.</div>'; return; }
+    const nums = {};
+    A.metrics.forEach((x) => { nums[x.col] = true; });
+    const rows = A.raw.slice().reverse().slice(0, TABLE_LIMIT);
+    $('raw').innerHTML = '<div class="table-wrap"><table><thead><tr>' + A.headers.map((h) => '<th' + (nums[h] ? ' class="num"' : '') + '>' + esc(h) + '</th>').join('') +
+      '</tr></thead><tbody>' + rows.map((r) => '<tr>' + A.headers.map((h) => {
+        const v = r[h];
+        if (h === A.monthCol && parseDate(v)) return '<td>' + esc(monthLabel(monthKey(parseDate(v)))) + '</td>';
+        return '<td' + (nums[h] ? ' class="num"' : '') + '>' + esc(v == null ? '' : v) + '</td>';
+      }).join('') + '</tr>').join('') + '</tbody></table></div>';
   }
 
-  function renderRows(v) {
-    const m = state.model;
-    const q = $('rows-q').value.trim().toLowerCase();
-    const df = $('done-filter').value;
-    let list = v.listRows.filter((r) => (!q || r.hay.indexOf(q) >= 0) && (!df || r.done === (df === 'yes')));
-    if (m.dateCol) list = list.slice().sort((a, b) => (b.date || 0) - (a.date || 0) || b.i - a.i);
-    else list = list.slice().reverse();
-    $('rows-count').textContent = list.length === m.rows.length ? String(list.length) : list.length + ' of ' + m.rows.length;
-    const box = $('rows');
-    if (!m.headers.length) { box.innerHTML = '<div class="empty">' + esc(m.error || 'No marketing data yet.') + '</div>'; return; }
-    if (!list.length) { box.innerHTML = '<div class="empty">' + (q || df ? 'Nothing matches these filters.' : 'No entries in this period.') + '</div>'; return; }
-    const numCols = {};
-    m.metrics.forEach((x) => { numCols[x.name] = x; });
-    const cell = (h, r) => {
-      const val = r.raw[h];
-      if (numCols[h]) return '<td class="num">' + esc(isBlank(val) ? '' : (r.vals[h] == null ? val : fmtNum(r.vals[h], numCols[h]))) + '</td>';
-      if (h === m.dateCol && r.date) return '<td>' + esc(fmtDay(r.date, true)) + '</td>';
-      const s = String(val == null ? '' : val);
-      return '<td' + (s.length > 40 ? ' class="wrap"' : '') + '>' + esc(s) + '</td>';
-    };
-    const off = (r) => !m.doneReady || state.saving[r.id] ? ' disabled' : '';
-    const doneCell = (r) => '<td class="done-cell"><span class="seg" role="group" aria-label="Completed: ' + esc(r.item) + '"' +
-      (r.doneBy || r.doneAt ? ' title="' + esc('Set by ' + (r.doneBy || 'someone') + (r.doneAt ? ', ' + r.doneAt : '')) + '"' : '') + '>' +
-      '<button type="button" data-id="' + esc(r.id) + '" data-done="no" aria-pressed="' + !r.done + '"' + off(r) + '>No</button>' +
-      '<button type="button" data-id="' + esc(r.id) + '" data-done="yes" aria-pressed="' + r.done + '"' + off(r) + '>Yes</button></span></td>';
-    box.innerHTML = '<div class="table-wrap"><table><thead><tr><th scope="col">Completed</th>' +
-      m.headers.map((h) => '<th' + (numCols[h] ? ' class="num"' : '') + ' scope="col">' + esc(h) + '</th>').join('') +
-      '</tr></thead><tbody>' + list.slice(0, TABLE_LIMIT).map((r) => '<tr' + (r.done ? ' class="is-done"' : '') + '>' + doneCell(r) + m.headers.map((h) => cell(h, r)).join('') + '</tr>').join('') +
-      '</tbody></table></div>' +
-      (list.length > TABLE_LIMIT ? '<div class="more">Showing the newest ' + TABLE_LIMIT + '. Search or pick a shorter period to see others.</div>' : '');
-  }
-
-  // Flips one row's Completed switch, then saves it to the Marketing Completed tab.
+  // ---------- Completed switch ----------
   async function markDone(id, done) {
     const m = state.model;
-    const row = m && m.rows.find((r) => r.id === id);
+    const row = m && m.C.rows.find((r) => r.id === id);
     if (!row || row.done === done || state.saving[id]) return;
     const before = row.done;
     row.done = done;
     state.saving[id] = true;
     $('done-msg').textContent = '';
-    render();
+    renderContent();
     try {
       if (!DEMO) {
         const url = API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + new URLSearchParams({
-          action: 'mark', key: getKey(), id, item: row.item, done: done ? 'yes' : 'no', by: myName().trim()
+          action: 'mark', key: getKey(), id, item: row.title || id, done: done ? 'yes' : 'no', by: myName().trim()
         }).toString();
         const res = await fetch(url, { cache: 'no-store' });
         let json;
@@ -854,10 +982,10 @@
       }
     } catch (err) {
       row.done = before;
-      $('done-msg').textContent = 'Couldn’t save Completed for “' + row.item + '”: ' + (err instanceof TypeError ? 'check your connection.' : err.message);
+      $('done-msg').textContent = 'Couldn’t save Completed for “' + (row.title || 'that row') + '”: ' + (err instanceof TypeError ? 'check your connection.' : err.message);
     } finally {
       delete state.saving[id];
-      render();
+      renderContent();
     }
   }
 
@@ -877,16 +1005,10 @@
   }
 
   function setData(data) {
+    showError('');
     state.model = buildModel(data);
-    // Fall back to all time when the chosen period has no entries.
-    const m = state.model;
-    if (m.dateCol && !view.range) {
-      const b = periodBounds(m, '90');
-      if (b && !m.rows.some((r) => inRange(r, b.from, b.to))) view.range = 'all';
-    }
     $('gate').hidden = true;
     $('app').hidden = false;
-    showError('');
     render();
   }
 
@@ -901,7 +1023,7 @@
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 30000);
     try {
-      const url = API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + 'action=marketing&key=' + encodeURIComponent(key);
+      const url = API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + 'key=' + encodeURIComponent(key);
       const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
       const text = await res.text();
       let json;
@@ -920,7 +1042,7 @@
       setData(json);
     } catch (err) {
       const msg = err.name === 'AbortError' ? 'The request timed out. Try Refresh.'
-        : err instanceof TypeError ? 'Could not reach the dashboard API. Check your connection and the API_URL, then try Refresh.'
+        : err instanceof TypeError ? 'Could not reach the marketing API. Check your connection and the API_URL, then try Refresh.'
         : err.message;
       if (state.model) showError(msg + ' Showing the last data loaded.');
       else { $('gate').hidden = true; $('app').hidden = false; showError(msg); }
@@ -934,38 +1056,69 @@
 
   // ---------- Demo data ----------
   function demoData() {
-    const headers = ['Week Of', 'Channel', 'Campaign', 'Spend', 'Impressions', 'Clicks', 'Leads', 'Bookings', 'Followers', 'Notes'];
-    const channels = [
-      { name: 'Instagram', spend: 120, imp: 9000, ctr: 0.012, lead: 0.07, book: 0.35, fol: 2400, grow: 18, camp: 'Reels: first lesson' },
-      { name: 'Facebook', spend: 90, imp: 7000, ctr: 0.009, lead: 0.06, book: 0.3, fol: 3100, grow: 6, camp: 'Gift cards' },
-      { name: 'Google Ads', spend: 160, imp: 4000, ctr: 0.045, lead: 0.09, book: 0.4, fol: null, grow: 0, camp: 'Kite lessons St Pete' },
-      { name: 'TikTok', spend: 40, imp: 12000, ctr: 0.006, lead: 0.04, book: 0.25, fol: 800, grow: 25, camp: 'Wipeout of the week' }
-    ];
-    let seed = 7;
+    let seed = 11;
     const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-    const monday = addDays(startOfDay(new Date()), -((new Date().getDay() + 6) % 7));
+    const now = new Date();
+    // Tampa Bay kite season: windy Oct to May, quiet in summer.
+    const season = [1.0, 1.1, 1.35, 1.4, 1.2, 0.7, 0.55, 0.55, 0.75, 1.15, 1.2, 0.95];
+    const channels = [
+      { name: 'Google', spend: 420, imp: 26000, ctr: 0.05, lead: 0.07, book: 0.42, aov: 260 },
+      { name: 'Instagram', spend: 180, imp: 38000, ctr: 0.012, lead: 0.06, book: 0.3, aov: 230, fol: 2100, grow: 45 },
+      { name: 'Facebook', spend: 120, imp: 22000, ctr: 0.01, lead: 0.05, book: 0.28, aov: 220, fol: 3400, grow: 15 },
+      { name: 'TikTok', spend: 60, imp: 30000, ctr: 0.007, lead: 0.04, book: 0.2, aov: 210, fol: 600, grow: 70 }
+    ];
     const rows = [];
-    for (let w = 25; w >= 0; w--) {
-      const d = addDays(monday, -7 * w);
-      const season = 0.7 + 0.5 * Math.sin((d.getMonth() + 1) / 12 * Math.PI * 2 - 1);
-      const ds = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-      channels.forEach((c) => {
-        const k = season * (0.8 + rand() * 0.4);
-        const imp = Math.round(c.imp * k);
-        const clicks = Math.round(imp * c.ctr * (0.85 + rand() * 0.3));
-        const leads = Math.round(clicks * c.lead * (0.7 + rand() * 0.6));
-        rows.push({
-          'Week Of': ds, Channel: c.name, Campaign: c.camp,
-          Spend: Math.round(c.spend * (0.85 + rand() * 0.3)), Impressions: imp, Clicks: clicks, Leads: leads,
-          Bookings: Math.round(leads * c.book * (0.6 + rand() * 0.8)),
-          Followers: c.fol == null ? '' : Math.round(c.fol + c.grow * (25 - w) * (0.8 + rand() * 0.4)),
-          Notes: w === 3 && c.name === 'Instagram' ? 'Boosted the Skyway sunset reel' : ''
+    let n = 0;
+    for (let y = now.getFullYear() - 1; y <= now.getFullYear(); y++) {
+      for (let mo = 0; mo < 12; mo++) {
+        if (y === now.getFullYear() && mo > now.getMonth()) break;
+        const s = season[mo] * (y === now.getFullYear() ? 1.18 : 1);
+        n++;
+        channels.forEach((c) => {
+          const k = s * (0.85 + rand() * 0.3);
+          const imp = Math.round(c.imp * k), visits = Math.round(imp * c.ctr);
+          const leads = Math.round(visits * c.lead * (0.8 + rand() * 0.4)), bookings = Math.round(leads * c.book * (0.8 + rand() * 0.4));
+          rows.push({
+            Month: y + '-' + pad(mo + 1) + '-01', Channel: c.name, Spend: Math.round(c.spend * (0.8 + rand() * 0.4) * (s > 1 ? 1.2 : 0.8)),
+            Impressions: imp, 'Website Visits': visits, Leads: leads, Bookings: bookings, Revenue: bookings * c.aov,
+            Followers: c.fol ? Math.round(c.fol + c.grow * n * (0.9 + rand() * 0.2)) : '',
+            'Google Reviews': c.name === 'Google' ? 118 + Math.round(n * 2.6) : '',
+            Rating: c.name === 'Google' ? (4.8 + (n % 3) * 0.05).toFixed(1) : '',
+            Calls: c.name === 'Google' ? Math.round(40 * s * (0.8 + rand() * 0.4)) : ''
+          });
         });
-      });
+      }
+    }
+    const day = (d) => { const x = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
+    const posts = [
+      [-20, 'Fall wind season is here', 'Blog', 'Anthony', 'Published'],
+      [-16, 'Reel: first water start', 'Instagram', 'Brad', 'Published'],
+      [-12, 'Gift cards for the holidays', 'Facebook', 'Anthony', 'Published'],
+      [-9, 'What to wear for winter kiting', 'Blog', 'Nate', 'Draft'],
+      [-5, 'Student spotlight: Sarah', 'Instagram', 'Brad', 'In progress'],
+      [-2, 'Wipeout of the week', 'TikTok', 'Nate', 'Planned'],
+      [1, 'Best launch spots in St. Pete', 'Blog', 'Anthony', 'Draft'],
+      [3, 'Sunset session at the Skyway', 'Instagram', 'Brad', 'Planned'],
+      [6, 'Kite lesson FAQ', 'Website', 'Anthony', 'Planned'],
+      [10, 'Black Friday lesson packs', 'Email', 'Anthony', 'Idea'],
+      [14, 'Behind the scenes: gear check', 'TikTok', 'Nate', 'Idea'],
+      [21, 'Year in review', 'Blog', 'Anthony', 'Idea'],
+      ['', 'Partner with local surf shop', 'Instagram', 'Brad', 'Idea']
+    ];
+    const content = { tab: 'Blog Posts Update', headers: ['Publish Date', 'Title', 'Platform', 'Owner', 'Status', 'Link'],
+      rows: posts.map((p) => ({ 'Publish Date': p[0] === '' ? '' : day(p[0]), Title: p[1], Platform: p[2], Owner: p[3], Status: p[4], Link: '' })) };
+    const goals = { tab: 'Goals', headers: ['Month', 'Leads Goal', 'Bookings Goal', 'Revenue Goal'], rows: [] };
+    for (let mo = 0; mo < 12; mo++) {
+      goals.rows.push({ Month: now.getFullYear() + '-' + pad(mo + 1) + '-01', 'Leads Goal': Math.round(150 * season[mo]),
+        'Bookings Goal': Math.round(60 * season[mo]), 'Revenue Goal': Math.round(15000 * season[mo]) });
     }
     const done = {};
-    rows.forEach((r, i) => { if (i < rows.length - 12 && i % 3 !== 1) done[[r['Week Of'], r.Campaign, r.Channel].join('|').toLowerCase()] = { done: true, by: 'Anthony', updated: '' }; });
-    return { ok: true, updated: new Date().toISOString().slice(0, 19), marketing: { headers, rows, tab: 'Marketing (sample)', file: '' }, done };
+    done[[day(-9), 'what to wear for winter kiting', 'blog'].join('|')] = { done: true, by: 'Nate', updated: '' };
+    return {
+      ok: true, updated: new Date().toISOString().slice(0, 19), file: '2025/ 26 KSP - Marketing (sample)',
+      sheets: ['Analytics', 'Blog Posts Update', 'Goals'],
+      analytics: { tab: 'Analytics', headers: Object.keys(rows[0]), rows }, content, goals, done
+    };
   }
 
   // ---------- Events ----------
@@ -985,30 +1138,29 @@
     memKey = '';
     keyStore.clear();
     showError('');
-    $('rows-q').value = '';
-    ['kpis', 'trend', 'split', 'rows'].forEach((id) => { $(id).innerHTML = ''; });
+    ['kpis', 'funnel', 'channels', 'ch-table', 'content', 'reach', 'trend', 'raw'].forEach((id) => { $(id).innerHTML = ''; });
     showGate();
   });
-  function setView(patch) {
-    view = Object.assign({}, view, patch);
-    viewStore.set(view);
-    render();
-  }
-  $('range').addEventListener('change', (e) => setView({ range: e.target.value }));
-  $('metric').addEventListener('change', (e) => setView({ metric: e.target.value }));
-  $('group').addEventListener('change', (e) => setView({ group: e.target.value }));
-  $('rows-q').addEventListener('input', () => state.model && renderRows(currentView()));
-  $('done-filter').addEventListener('change', () => state.model && renderRows(currentView()));
-  $('rows').addEventListener('click', (e) => {
+  $('month').addEventListener('change', (e) => { state.month = e.target.value; render(); });
+  $('ch-metric').addEventListener('change', (e) => { state.chMetric = e.target.value; renderChannels(); });
+  $('trend-metric').addEventListener('change', (e) => { state.trendMetric = e.target.value; renderTrend(); });
+  $('cc-q').addEventListener('input', () => state.model && renderContent());
+  $('cc-filter').addEventListener('change', () => state.model && renderContent());
+  $('content').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-done]');
     if (b && !b.disabled) markDone(b.dataset.id, b.dataset.done === 'yes');
   });
   const trend = $('trend');
   ['mouseover', 'focusin'].forEach((t) => trend.addEventListener(t, (e) => {
-    const bar = e.target.closest('.bar');
-    if (bar) showTip(bar);
+    const g = e.target.closest('.grp');
+    if (g) showTip(g);
   }));
   ['mouseleave', 'focusout'].forEach((t) => trend.addEventListener(t, () => { const tip = $('tip'); if (tip) tip.hidden = true; }));
+  trend.addEventListener('click', (e) => {
+    const g = e.target.closest('.grp');
+    const p = g && trend._pts[+g.dataset.i];
+    if (p && state.model.A.months.indexOf(p.k) >= 0) { state.month = p.k; render(); }
+  });
 
   // ---------- Start ----------
   if (DEMO) {
