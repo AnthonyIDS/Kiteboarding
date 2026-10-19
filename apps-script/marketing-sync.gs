@@ -25,6 +25,13 @@
  */
 const SYNC_GA4_PROPERTY_ID = '';
 
+/**
+ * Your YouTube channel's handle, from its web address (youtube.com/@...).
+ * Needed when the channel is a Brand Account rather than your own Google
+ * account; leave blank to use the channel of the account running the script.
+ */
+const SYNC_YOUTUBE_HANDLE = '@KiteboardingStPetersburg';
+
 /** How many months back to fill, including this one (24 = this season and last). */
 const SYNC_MONTHS = 24;
 
@@ -92,18 +99,29 @@ function syncYouTube_(months) {
   if (typeof YouTube === 'undefined' || typeof YouTubeAnalytics === 'undefined') {
     throw new Error('Add the "YouTube Data API v3" and "YouTube Analytics API" services.');
   }
-  const ch = (YouTube.Channels.list('statistics', { mine: true }).items || [])[0];
-  if (!ch) throw new Error('No YouTube channel on this Google account.');
+  const handle = String(SYNC_YOUTUBE_HANDLE).trim();
+  const ch = (YouTube.Channels.list('id,snippet,statistics', handle ? { forHandle: handle } : { mine: true }).items || [])[0];
+  if (!ch) throw new Error(handle ? 'No YouTube channel ' + handle + '.' : 'No YouTube channel on this Google account.');
+  Logger.log('YouTube channel: ' + ch.snippet.title + ' (' + ch.statistics.subscriberCount + ' subscribers).');
   const subsNow = +ch.statistics.subscriberCount || 0;
 
   // One report per month. (The API's "month" dimension is strict about date
   // ranges, so plain per-month totals are simpler and work for this month too.)
   const metrics = 'views,estimatedMinutesWatched,subscribersGained,subscribersLost';
   const byKey = {};
-  months.forEach(function (mo) {
-    const r = YouTubeAnalytics.Reports.query({ ids: 'channel==MINE', startDate: mo.start, endDate: mo.end, metrics: metrics });
-    if (r.rows && r.rows[0]) byKey[mo.key] = r.rows[0];
-  });
+  try {
+    months.forEach(function (mo) {
+      const r = YouTubeAnalytics.Reports.query({ ids: 'channel==' + ch.id, startDate: mo.start, endDate: mo.end, metrics: metrics });
+      if (r.rows && r.rows[0]) byKey[mo.key] = r.rows[0];
+    });
+  } catch (err) {
+    // YouTube only shares the monthly report with the channel's own login.
+    // Fall back to the public totals: subscribers, and views counted from
+    // the first sync of each month.
+    Logger.log('YouTube monthly report not available (' + String((err && err.message) || err) +
+      '). Using public totals; video views count from the first sync of each month.');
+    return [syncYouTubeTotals_(ch, months[months.length - 1].key)];
+  }
 
   // Subscribers at each month's end: today's count minus what came in after.
   let subs = subsNow;
@@ -120,6 +138,22 @@ function syncYouTube_(months) {
     }
   }
   return syncTrimEmpty_(out.reverse(), 'Video Views');
+}
+
+/** This month's row from public channel totals, remembering the view count at the month's first sync. */
+function syncYouTubeTotals_(ch, monthKey) {
+  const props = PropertiesService.getScriptProperties();
+  const viewsNow = +ch.statistics.viewCount || 0;
+  const key = 'syncYouTubeViews-' + monthKey;
+  let start = props.getProperty(key);
+  if (start == null) {
+    start = String(viewsNow);
+    props.setProperty(key, start);
+  }
+  return { month: monthKey, channel: 'YouTube', values: {
+    'Video Views': Math.max(0, viewsNow - +start),
+    'Followers': +ch.statistics.subscriberCount || 0
+  } };
 }
 
 // ---- Website (Google Analytics 4) -----------------------------------------
