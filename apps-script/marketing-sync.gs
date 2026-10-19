@@ -96,21 +96,14 @@ function syncYouTube_(months) {
   if (!ch) throw new Error('No YouTube channel on this Google account.');
   const subsNow = +ch.statistics.subscriberCount || 0;
 
+  // One report per month. (The API's "month" dimension is strict about date
+  // ranges, so plain per-month totals are simpler and work for this month too.)
   const metrics = 'views,estimatedMinutesWatched,subscribersGained,subscribersLost';
   const byKey = {};
-  const full = months.filter(function (mo) { return mo.full; });
-  // Whole months in one report (the "month" dimension needs whole months)...
-  if (full.length) {
-    const r = YouTubeAnalytics.Reports.query({
-      ids: 'channel==MINE', startDate: full[0].start, endDate: full[full.length - 1].end,
-      metrics: metrics, dimensions: 'month', sort: 'month'
-    });
-    (r.rows || []).forEach(function (row) { byKey[row[0]] = row.slice(1); });
-  }
-  // ...and this month so far on its own.
-  const cur = months[months.length - 1];
-  const rc = YouTubeAnalytics.Reports.query({ ids: 'channel==MINE', startDate: cur.start, endDate: cur.end, metrics: metrics });
-  if (rc.rows && rc.rows[0]) byKey[cur.key] = rc.rows[0];
+  months.forEach(function (mo) {
+    const r = YouTubeAnalytics.Reports.query({ ids: 'channel==MINE', startDate: mo.start, endDate: mo.end, metrics: metrics });
+    if (r.rows && r.rows[0]) byKey[mo.key] = r.rows[0];
+  });
 
   // Subscribers at each month's end: today's count minus what came in after.
   let subs = subsNow;
