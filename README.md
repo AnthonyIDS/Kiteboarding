@@ -84,16 +84,17 @@ On first visit, each team member enters the access key once. The browser remembe
 1. **Scorecard** ("Are we on track this month?"): Leads, Booked lessons, Conversion rate, Revenue and Cost per booking, each compared with the month before, with a progress bar toward the month's goal.
 2. **Funnel** ("Where do we lose people?"): Impressions → Website visits → Leads → Bookings, with the share that made it from each step.
 3. **Channels** ("What's working?"): each channel's bookings (or leads, revenue, spend), plus spend and cost per booking by channel.
-4. **Content calendar** ("What's due and is it done?"): every post with a **Completed** No/Yes switch, like **Jetski Needed** on the team dashboard. Overdue and due-soon posts are flagged; **To do** shows what's left.
-5. **Reputation and reach** ("Is the brand growing?"): followers, Google reviews, rating, calls and profile views, with the change from last month.
-6. **Season trend** ("How does this year compare?"): each month this year next to the same month last year.
+4. **Content calendar** ("What's due and is it done?"): every post with a **Completed** No/Yes switch, like **Jetski Needed** on the team dashboard. Overdue and due-soon posts are flagged; **To do** shows what's left, and a category filter narrows the list.
+5. **Content categories** ("Is the mix balanced, and what's next?"): one card per category (Learn to Kite, Gear Reviews, Spots & Conditions, ...) with its published and planned counts, its next date, and its idea bank. A bar shows each category's share of posts, and a category with nothing planned is flagged.
+6. **Reputation and reach** ("Is the brand growing?"): followers, Google reviews, rating, calls and profile views, with the change from last month.
+7. **Season trend** ("How does this year compare?"): each month this year next to the same month last year.
 
 It reads three tabs of the marketing spreadsheet and never changes them:
 
 | Tab | One row per | Columns it understands |
 | --- | --- | --- |
 | **Monthly Numbers** | month (and channel) | Month (or Date), Channel, Spend, Impressions, Website Visits, Leads, Bookings, Revenue, Followers, Google Reviews, Rating, Calls, Profile Views |
-| **Content Calendar** | post | Publish Date (or Due), Title, Platform, Owner, Status, Link |
+| **Content Calendar** | post or idea | Publish Date (or Due), Title, Platform, Owner, Status, Link, Category. Rows with Status `Idea` go to their category's idea bank instead of the calendar. |
 | **Goals** (optional) | month | Month, Leads Goal, Bookings Goal, Revenue Goal |
 
 Column names don't have to match exactly ("Website Sessions" counts as visits, "Lessons Booked" as bookings), any column can be missing, and its section simply hides. Other number columns still show up in the charts. The tab names are set at the top of `marketing-api.gs`.
@@ -114,6 +115,17 @@ The marketing script is attached to the marketing spreadsheet, separate from the
 8. Open the marketing page, type the marketing key, and press **Refresh**.
 
 The page remembers the marketing key separately from the team key, so each page asks for its own.
+
+### YouTube and website numbers (optional)
+
+[`apps-script/marketing-sync.gs`](apps-script/marketing-sync.gs) fills the **Monthly Numbers** tab every morning with a **YouTube** row (Video Views, Watch Hours, Followers = subscribers) and a **Website** row (Website Visits = Google Analytics sessions, Website Users) for each month, going back two years. It adds those columns if they're missing and never touches other channels' rows. It runs as the Google account that sets it up, so use the account that owns the YouTube channel and the website's Google Analytics (the one Site Kit is connected to).
+
+1. In the marketing spreadsheet's Apps Script, click **+** next to **Files**, pick **Script**, and name it `marketing-sync`.
+2. Paste [`apps-script/marketing-sync.gs`](apps-script/marketing-sync.gs) into it (**Copy raw file** on GitHub) and click **Save**.
+3. Click **+** next to **Services** and add, one at a time: **YouTube Data API v3**, **YouTube Analytics API**, **Google Analytics Data API**, **Google Analytics Admin API**. Keep the names Google suggests.
+4. Pick **setupAutoSync** in the toolbar and click **Run**. Allow access when Google asks. The **Execution log** says how many months it filled for YouTube and the website.
+
+No new deployment is needed: the dashboard already reads every row of Monthly Numbers. If the log says there are several Analytics properties, put the right number in `SYNC_GA4_PROPERTY_ID` and run `syncAnalytics`.
 
 ## Updating the script (after a change to `dashboard-api.gs`)
 

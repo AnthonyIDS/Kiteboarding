@@ -238,6 +238,23 @@
   .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 13px; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+
+  /* Content categories */
+  .mix { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--surface-2); margin-bottom: 6px; }
+  .mix i { display: block; height: 100%; }
+  .mix-cap { color: var(--muted); font-size: 12.5px; margin-bottom: 14px; }
+  .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .cat { border: 1px solid var(--border); border-radius: 12px; padding: 14px; min-width: 0; }
+  .cat-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .cat-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+  .cat-name .sw { flex: none; }
+  .cat-sub { margin-top: 4px; color: var(--muted); font-size: 12.5px; }
+  .cat-sub b { color: var(--text); font-weight: 600; }
+  .cat ul { list-style: none; margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid var(--border); }
+  .cat li { padding: 4px 0; overflow-wrap: anywhere; }
+  .cat li span { color: var(--muted); font-size: 12.5px; margin-left: 6px; }
+  .cat .none { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
   .sw.cur { background: var(--accent); }
   .sw.prev { background: var(--neutral); opacity: .35; }
   .tip {
@@ -403,6 +420,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
         <input class="field" id="cc-q" type="search" placeholder="Search posts" aria-label="Search the content calendar">
       </div>
+      <select class="status-filter" id="cc-cat" aria-label="Category" hidden></select>
       <select class="status-filter" id="cc-filter" aria-label="Show">
         <option value="todo">To do</option>
         <option value="">All</option>
@@ -411,6 +429,13 @@
     </div>
     <div class="team-msg" id="done-msg" role="alert"></div>
     <div class="panel-body"><div id="content"></div></div>
+  </section>
+
+  <!-- 4b. Content categories -->
+  <section class="panel" aria-labelledby="cat-h" id="cat-panel" hidden>
+    <div class="panel-head"><h2 id="cat-h">Content categories<span class="count" id="cat-count"></span></h2></div>
+    <p class="hint">Each category's published and planned posts, plus its idea bank: rows in the Content Calendar with Status <code>Idea</code>.</p>
+    <div class="panel-body"><div id="cats"></div></div>
   </section>
 
   <!-- 5. Reputation and reach -->
@@ -559,11 +584,13 @@
     { key: 'followers', label: 'Followers', agg: 'last', re: [/follower|subscriber|fans|page likes/] },
     { key: 'reviews', label: 'Google reviews', agg: 'last', re: [/review/] },
     { key: 'rating', label: 'Rating', kind: 'rating', agg: 'avg-last', re: [/rating|stars/] },
+    { key: 'videoViews', label: 'Video views', agg: 'sum', re: [/video views?|youtube views?/] },
+    { key: 'watch', label: 'Watch hours', agg: 'sum', re: [/watch/] },
     { key: 'calls', label: 'Calls', agg: 'sum', re: [/call/] },
     { key: 'views', label: 'Profile views', agg: 'sum', re: [/profile view|gbp|business profile|listing view|views?$/] },
     { key: 'engagement', label: 'Engagement', agg: 'sum', re: [/engag|likes|comments|shares|saves/] }
   ];
-  const REACH = ['followers', 'reviews', 'rating', 'calls', 'views', 'engagement'];
+  const REACH = ['followers', 'videoViews', 'watch', 'reviews', 'rating', 'calls', 'views', 'engagement'];
 
   // Which month a row belongs to: a date column, or Month + Year columns.
   function monthReader(headers, rows) {
@@ -659,6 +686,7 @@
       h.find((x) => x !== dateCol) || null;
     const statusCol = findCol(h, [/status|stage/]);
     const platCol = findCol(h, [/platform|channel|where|network/]);
+    const catCol = findCol(h, [/categor|pillar|theme|series/]);
     const used = {};
     const rows = C.rows.map((r, i) => {
       const date = dateCol ? parseDate(r[dateCol]) : null;
@@ -669,11 +697,17 @@
       const rec = done[id];
       const status = statusCol ? String(r[statusCol] || '') : '';
       return { i, id, raw: r, date: date ? startOfDay(date) : null, title: titleCol ? String(r[titleCol] || '') : '',
+        cat: catCol ? String(r[catCol] || '').trim() : '', plat: platCol ? String(r[platCol] || '').trim() : '',
+        idea: /^ideas?$/i.test(status.trim()),
         done: rec ? !!rec.done : /^(done|published|posted|complete|completed|live)$/i.test(status.trim()),
         doneBy: rec ? rec.by : '', doneAt: rec ? rec.updated : '',
         hay: h.map((x) => String(r[x] == null ? '' : r[x])).join(' ').toLowerCase() };
     });
-    return { tab: C.tab, error: C.error, headers: h, rows, dateCol, titleCol };
+    // Categories in the order they first appear; ideas go to their category's idea bank, not the calendar.
+    const cats = [];
+    rows.forEach((r) => { if (r.cat && cats.indexOf(r.cat) < 0) cats.push(r.cat); });
+    return { tab: C.tab, error: C.error, headers: h, rows: rows.filter((r) => !r.idea), ideas: rows.filter((r) => r.idea),
+      dateCol, titleCol, catCol, cats };
   }
 
   function buildModel(data) {
@@ -819,7 +853,14 @@
     } else $('ch-table').innerHTML = '';
   }
 
+  const CAT_COLORS = ['--teal', '--blue', '--purple', '--orange', '--pink', '--green', '--warn', '--neutral'];
+  const catColor = (name) => {
+    const i = state.model.C.cats.indexOf(name);
+    return 'var(' + CAT_COLORS[(i < 0 ? CAT_COLORS.length - 1 : i) % CAT_COLORS.length] + ')';
+  };
+
   function renderContent() {
+    renderCats();
     const m = state.model, C = m.C;
     const box = $('content');
     if (!C.headers.length) {
@@ -838,7 +879,12 @@
 
     const q = $('cc-q').value.trim().toLowerCase();
     const f = $('cc-filter').value;
-    let list = C.rows.filter((r) => (!q || r.hay.indexOf(q) >= 0) && (!f || (f === 'done') === r.done));
+    const sel = $('cc-cat');
+    sel.hidden = !C.cats.length;
+    const cat = C.cats.indexOf(sel.value) >= 0 ? sel.value : '';
+    sel.innerHTML = '<option value="">All categories</option>' + C.cats.map((c) => '<option>' + esc(c) + '</option>').join('');
+    sel.value = cat;
+    let list = C.rows.filter((r) => (!q || r.hay.indexOf(q) >= 0) && (!f || (f === 'done') === r.done) && (!cat || r.cat === cat));
     // To do: oldest due first (overdue on top), undated last. Done: newest first.
     list = list.slice().sort((a, b) => {
       if (a.done !== b.done) return a.done ? 1 : -1;
@@ -859,6 +905,7 @@
       const v = r.raw[h];
       if (h === C.dateCol && r.date) return '<td>' + esc(fmtDay(r.date)) + flag(r) + '</td>';
       const s = String(v == null ? '' : v);
+      if (h === C.catCol && s.trim()) return '<td><span class="tag"><span class="sw" style="background:' + catColor(s.trim()) + '"></span>' + esc(s) + '</span></td>';
       if (/^https?:\/\//.test(s)) return '<td><a href="' + esc(s) + '" target="_blank" rel="noopener">Open</a></td>';
       return '<td' + (s.length > 40 || h === C.titleCol ? ' class="wrap"' : '') + '>' + (h === C.titleCol ? '<b>' + esc(s) + '</b>' : esc(s)) + '</td>';
     };
@@ -868,6 +915,32 @@
       cols.map((h) => '<th scope="col">' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' +
       list.slice(0, TABLE_LIMIT).map((r) => '<tr' + (r.done ? ' class="is-done"' : '') + '>' + doneCell(r) + cols.map((h) => cell(h, r)).join('') + '</tr>').join('') +
       '</tbody></table></div>' + (list.length > TABLE_LIMIT ? '<div class="more">Showing ' + TABLE_LIMIT + '. Search to find others.</div>' : '');
+  }
+
+  function renderCats() {
+    const C = state.model.C;
+    $('cat-panel').hidden = !C.cats.length;
+    if (!C.cats.length) return;
+    const today = startOfDay(new Date());
+    const list = C.cats.map((name) => {
+      const posts = C.rows.filter((r) => r.cat === name);
+      const next = posts.filter((r) => !r.done && r.date && r.date >= today).sort((a, b) => a.date - b.date)[0];
+      return { name, posts, done: posts.filter((r) => r.done).length, planned: posts.filter((r) => !r.done).length,
+        ideas: C.ideas.filter((r) => r.cat === name), next };
+    });
+    const total = list.reduce((n, c) => n + c.posts.length, 0);
+    $('cat-count').textContent = String(list.length);
+    const mix = total ? '<div class="mix" role="img" aria-label="' + esc(list.map((c) => c.name + ' ' + Math.round(c.posts.length / total * 100) + '%').join(', ')) + '">' +
+      list.map((c) => c.posts.length ? '<i style="width:' + (c.posts.length / total * 100) + '%;background:' + catColor(c.name) + '" title="' + esc(c.name + ': ' + c.posts.length) + '"></i>' : '').join('') +
+      '</div><div class="mix-cap">Share of the ' + total + ' posts on the calendar, by category</div>' : '';
+    $('cats').innerHTML = mix + '<div class="cats">' + list.map((c) => {
+      const pill = c.next ? '<span class="pill info">Next: ' + esc(fmtDay(c.next.date)) + '</span>' : '<span class="pill warn">Nothing planned</span>';
+      const ideas = c.ideas.length
+        ? '<ul>' + c.ideas.map((r) => '<li>' + esc(r.title || 'Untitled idea') + (r.plat ? '<span>' + esc(r.plat) + '</span>' : '') + '</li>').join('') + '</ul>'
+        : '<div class="none">No ideas yet.</div>';
+      return '<div class="cat"><div class="cat-head"><span class="cat-name"><span class="sw" style="background:' + catColor(c.name) + '"></span>' + esc(c.name) + '</span>' + pill + '</div>' +
+        '<div class="cat-sub"><b>' + c.done + '</b> published · <b>' + c.planned + '</b> planned · <b>' + c.ideas.length + '</b> idea' + (c.ideas.length === 1 ? '' : 's') + '</div>' + ideas + '</div>';
+    }).join('') + '</div>';
   }
 
   function renderReach() {
@@ -1065,7 +1138,8 @@
       { name: 'Google', spend: 420, imp: 26000, ctr: 0.05, lead: 0.07, book: 0.42, aov: 260 },
       { name: 'Instagram', spend: 180, imp: 38000, ctr: 0.012, lead: 0.06, book: 0.3, aov: 230, fol: 2100, grow: 45 },
       { name: 'Facebook', spend: 120, imp: 22000, ctr: 0.01, lead: 0.05, book: 0.28, aov: 220, fol: 3400, grow: 15 },
-      { name: 'TikTok', spend: 60, imp: 30000, ctr: 0.007, lead: 0.04, book: 0.2, aov: 210, fol: 600, grow: 70 }
+      { name: 'TikTok', spend: 60, imp: 30000, ctr: 0.007, lead: 0.04, book: 0.2, aov: 210, fol: 600, grow: 70 },
+      { name: 'YouTube', spend: 0, imp: 9000, ctr: 0.015, lead: 0.05, book: 0.3, aov: 240, fol: 1450, grow: 12, video: 5200 }
     ];
     const rows = [];
     let n = 0;
@@ -1084,29 +1158,35 @@
             Followers: c.fol ? Math.round(c.fol + c.grow * n * (0.9 + rand() * 0.2)) : '',
             'Google Reviews': c.name === 'Google' ? 118 + Math.round(n * 2.6) : '',
             Rating: c.name === 'Google' ? (4.8 + (n % 3) * 0.05).toFixed(1) : '',
-            Calls: c.name === 'Google' ? Math.round(40 * s * (0.8 + rand() * 0.4)) : ''
+            Calls: c.name === 'Google' ? Math.round(40 * s * (0.8 + rand() * 0.4)) : '',
+            'Video Views': c.video ? Math.round(c.video * k) : '',
+            'Watch Hours': c.video ? Math.round(c.video * k * 0.05) : ''
           });
         });
       }
     }
     const day = (d) => { const x = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); };
     const posts = [
-      [-20, 'Fall wind season is here', 'Blog', 'Anthony', 'Published'],
-      [-16, 'Reel: first water start', 'Instagram', 'Brad', 'Published'],
-      [-12, 'Gift cards for the holidays', 'Facebook', 'Anthony', 'Published'],
-      [-9, 'What to wear for winter kiting', 'Blog', 'Nate', 'Draft'],
-      [-5, 'Student spotlight: Sarah', 'Instagram', 'Brad', 'In progress'],
-      [-2, 'Wipeout of the week', 'TikTok', 'Nate', 'Planned'],
-      [1, 'Best launch spots in St. Pete', 'Blog', 'Anthony', 'Draft'],
-      [3, 'Sunset session at the Skyway', 'Instagram', 'Brad', 'Planned'],
-      [6, 'Kite lesson FAQ', 'Website', 'Anthony', 'Planned'],
-      [10, 'Black Friday lesson packs', 'Email', 'Anthony', 'Idea'],
-      [14, 'Behind the scenes: gear check', 'TikTok', 'Nate', 'Idea'],
-      [21, 'Year in review', 'Blog', 'Anthony', 'Idea'],
-      ['', 'Partner with local surf shop', 'Instagram', 'Brad', 'Idea']
+      [-20, 'Fall wind season is here', 'Blog', 'Anthony', 'Published', 'Spots & Conditions'],
+      [-16, 'Reel: first water start', 'Instagram', 'Brad', 'Published', 'Learn to Kite'],
+      [-12, 'Gift cards for the holidays', 'Facebook', 'Anthony', 'Published', 'Lessons & Offers'],
+      [-9, 'What to wear for winter kiting', 'Blog', 'Nate', 'Draft', 'Gear'],
+      [-5, 'Student spotlight: Sarah', 'Instagram', 'Brad', 'In progress', 'Community'],
+      [-2, 'Wipeout of the week', 'TikTok', 'Nate', 'Planned', 'Community'],
+      [1, 'Best launch spots in St. Pete', 'Blog', 'Anthony', 'Draft', 'Spots & Conditions'],
+      [3, 'Sunset session at the Skyway', 'Instagram', 'Brad', 'Planned', 'Community'],
+      [6, 'Kite lesson FAQ', 'Website', 'Anthony', 'Planned', 'Learn to Kite'],
+      [12, 'Black Friday lesson packs', 'Email', 'Anthony', 'Planned', 'Lessons & Offers'],
+      ['', 'What to expect at your first lesson', 'Blog', '', 'Idea', 'Learn to Kite'],
+      ['', 'Is kiteboarding hard to learn?', 'Blog', '', 'Idea', 'Learn to Kite'],
+      ['', 'Best beginner kite setup for Tampa Bay', 'Blog', '', 'Idea', 'Gear'],
+      ['', 'Reading a Tampa Bay wind forecast', 'Blog', '', 'Idea', 'Spots & Conditions'],
+      ['', 'Your first jump, step by step', 'Instagram', '', 'Idea', 'Progression'],
+      ['', 'Meet our instructors', 'Instagram', '', 'Idea', 'Community'],
+      ['', 'Group lesson weekend', 'Email', '', 'Idea', 'Lessons & Offers']
     ];
-    const content = { tab: 'Content Calendar', headers: ['Publish Date', 'Title', 'Platform', 'Owner', 'Status', 'Link'],
-      rows: posts.map((p) => ({ 'Publish Date': p[0] === '' ? '' : day(p[0]), Title: p[1], Platform: p[2], Owner: p[3], Status: p[4], Link: '' })) };
+    const content = { tab: 'Content Calendar', headers: ['Publish Date', 'Title', 'Platform', 'Owner', 'Status', 'Link', 'Category'],
+      rows: posts.map((p) => ({ 'Publish Date': p[0] === '' ? '' : day(p[0]), Title: p[1], Platform: p[2], Owner: p[3], Status: p[4], Link: '', Category: p[5] })) };
     const goals = { tab: 'Goals', headers: ['Month', 'Leads Goal', 'Bookings Goal', 'Revenue Goal'], rows: [] };
     for (let mo = 0; mo < 12; mo++) {
       goals.rows.push({ Month: now.getFullYear() + '-' + pad(mo + 1) + '-01', 'Leads Goal': Math.round(150 * season[mo]),
@@ -1146,6 +1226,7 @@
   $('trend-metric').addEventListener('change', (e) => { state.trendMetric = e.target.value; renderTrend(); });
   $('cc-q').addEventListener('input', () => state.model && renderContent());
   $('cc-filter').addEventListener('change', () => state.model && renderContent());
+  $('cc-cat').addEventListener('change', () => state.model && renderContent());
   $('content').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-done]');
     if (b && !b.disabled) markDone(b.dataset.id, b.dataset.done === 'yes');
