@@ -116,6 +116,17 @@ The marketing script is attached to the marketing spreadsheet, separate from the
 
 The page remembers the marketing key separately from the team key, so each page asks for its own.
 
+### YouTube and website numbers (optional)
+
+[`apps-script/marketing-sync.gs`](apps-script/marketing-sync.gs) fills the **Monthly Numbers** tab every morning with a **YouTube** row (Video Views, Watch Hours, Followers = subscribers) and a **Website** row (Website Visits = Google Analytics sessions, Website Users) for each month, going back two years. It adds those columns if they're missing and never touches other channels' rows. It runs as the Google account that sets it up, so use the account that owns the YouTube channel and the website's Google Analytics (the one Site Kit is connected to).
+
+1. In the marketing spreadsheet's Apps Script, click **+** next to **Files**, pick **Script**, and name it `marketing-sync`.
+2. Paste [`apps-script/marketing-sync.gs`](apps-script/marketing-sync.gs) into it (**Copy raw file** on GitHub) and click **Save**.
+3. Click **+** next to **Services** and add, one at a time: **YouTube Data API v3**, **YouTube Analytics API**, **Google Analytics Data API**, **Google Analytics Admin API**. Keep the names Google suggests.
+4. Pick **setupAutoSync** in the toolbar and click **Run**. Allow access when Google asks. The **Execution log** says how many months it filled for YouTube and the website.
+
+No new deployment is needed: the dashboard already reads every row of Monthly Numbers. If the log says there are several Analytics properties, put the right number in `SYNC_GA4_PROPERTY_ID` and run `syncAnalytics`.
+
 ## Updating the script (after a change to `dashboard-api.gs`)
 
 1. Open [`apps-script/dashboard-api.gs`](apps-script/dashboard-api.gs) on GitHub and click the **Copy raw file** button (two overlapping squares, top right of the code).
