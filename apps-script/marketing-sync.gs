@@ -25,6 +25,13 @@
  */
 const SYNC_GA4_PROPERTY_ID = '';
 
+/**
+ * Your YouTube channel's handle, from its web address (youtube.com/@...).
+ * Needed when the channel is a Brand Account rather than your own Google
+ * account; leave blank to use the channel of the account running the script.
+ */
+const SYNC_YOUTUBE_HANDLE = '@KiteboardingStPetersburg';
+
 /** How many months back to fill, including this one (24 = this season and last). */
 const SYNC_MONTHS = 24;
 
@@ -36,6 +43,7 @@ const SYNC_MONTHS = 24;
 
 const SYNC_TAB = 'Monthly Numbers';
 const SYNC_HOUR = 6; // daily run, around 6 am in the spreadsheet's time zone
+const SYNC_YT_OWNER = 'syncYouTubeOwner'; // script property: who runs the YouTube sync
 
 /** Run once: syncs now and then every morning. Running it again is harmless. */
 function setupAutoSync() {
@@ -47,13 +55,40 @@ function setupAutoSync() {
   syncAnalytics();
 }
 
+/**
+ * For a YouTube channel owned by a different Google account: open this
+ * script while signed in to THAT account and run this once. YouTube then
+ * syncs every morning as that account, and the main sync leaves it alone.
+ */
+function setupYouTubeSync() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'syncYouTubeOnly') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('syncYouTubeOnly').timeBased().everyDays(1).atHour(SYNC_HOUR).create();
+  PropertiesService.getScriptProperties().setProperty(SYNC_YT_OWNER, syncMe_());
+  Logger.log('Daily YouTube sync is on for ' + syncMe_() + '. Running it now...');
+  syncYouTubeOnly();
+}
+
 /** Copies YouTube and website numbers into the Monthly Numbers tab. */
 function syncAnalytics() {
+  const owner = PropertiesService.getScriptProperties().getProperty(SYNC_YT_OWNER);
+  const youTubeHere = !owner || owner === syncMe_();
+  if (!youTubeHere) Logger.log('YouTube: synced separately by ' + owner + '.');
+  syncRun_((youTubeHere ? [['YouTube', syncYouTube_]] : []).concat([['Website', syncWebsite_]]));
+}
+
+/** YouTube only (the trigger setupYouTubeSync creates). */
+function syncYouTubeOnly() {
+  syncRun_([['YouTube', syncYouTube_]]);
+}
+
+function syncRun_(sources) {
   const ss = mktSpreadsheet_();
   const tz = ss.getSpreadsheetTimeZone();
   const months = syncMonthList_(tz);
   const out = [];
-  [['YouTube', syncYouTube_], ['Website', syncWebsite_]].forEach(function (src) {
+  sources.forEach(function (src) {
     try {
       const rows = src[1](months, tz);
       out.push.apply(out, rows);
@@ -65,6 +100,10 @@ function syncAnalytics() {
   if (!out.length) return;
   const n = syncWrite_(ss, tz, out);
   Logger.log('Updated ' + n.updated + ' rows and added ' + n.added + ' in "' + SYNC_TAB + '".');
+}
+
+function syncMe_() {
+  return Session.getEffectiveUser().getEmail() || 'this account';
 }
 
 /** [{ key: 'yyyy-MM', start: 'yyyy-MM-dd', end: 'yyyy-MM-dd', full: bool }], oldest first; the current month ends today. */
@@ -92,18 +131,29 @@ function syncYouTube_(months) {
   if (typeof YouTube === 'undefined' || typeof YouTubeAnalytics === 'undefined') {
     throw new Error('Add the "YouTube Data API v3" and "YouTube Analytics API" services.');
   }
-  const ch = (YouTube.Channels.list('statistics', { mine: true }).items || [])[0];
-  if (!ch) throw new Error('No YouTube channel on this Google account.');
+  const handle = String(SYNC_YOUTUBE_HANDLE).trim();
+  const ch = (YouTube.Channels.list('id,snippet,statistics', handle ? { forHandle: handle } : { mine: true }).items || [])[0];
+  if (!ch) throw new Error(handle ? 'No YouTube channel ' + handle + '.' : 'No YouTube channel on this Google account.');
+  Logger.log('YouTube channel: ' + ch.snippet.title + ' (' + ch.statistics.subscriberCount + ' subscribers).');
   const subsNow = +ch.statistics.subscriberCount || 0;
 
   // One report per month. (The API's "month" dimension is strict about date
   // ranges, so plain per-month totals are simpler and work for this month too.)
   const metrics = 'views,estimatedMinutesWatched,subscribersGained,subscribersLost';
   const byKey = {};
-  months.forEach(function (mo) {
-    const r = YouTubeAnalytics.Reports.query({ ids: 'channel==MINE', startDate: mo.start, endDate: mo.end, metrics: metrics });
-    if (r.rows && r.rows[0]) byKey[mo.key] = r.rows[0];
-  });
+  try {
+    months.forEach(function (mo) {
+      const r = YouTubeAnalytics.Reports.query({ ids: 'channel==' + ch.id, startDate: mo.start, endDate: mo.end, metrics: metrics });
+      if (r.rows && r.rows[0]) byKey[mo.key] = r.rows[0];
+    });
+  } catch (err) {
+    // YouTube only shares the monthly report with the channel's own login.
+    // Fall back to the public totals: subscribers, and views counted from
+    // the first sync of each month.
+    Logger.log('YouTube monthly report not available (' + String((err && err.message) || err) +
+      '). Using public totals; video views count from the first sync of each month.');
+    return [syncYouTubeTotals_(ch, months[months.length - 1].key)];
+  }
 
   // Subscribers at each month's end: today's count minus what came in after.
   let subs = subsNow;
@@ -120,6 +170,22 @@ function syncYouTube_(months) {
     }
   }
   return syncTrimEmpty_(out.reverse(), 'Video Views');
+}
+
+/** This month's row from public channel totals, remembering the view count at the month's first sync. */
+function syncYouTubeTotals_(ch, monthKey) {
+  const props = PropertiesService.getScriptProperties();
+  const viewsNow = +ch.statistics.viewCount || 0;
+  const key = 'syncYouTubeViews-' + monthKey;
+  let start = props.getProperty(key);
+  if (start == null) {
+    start = String(viewsNow);
+    props.setProperty(key, start);
+  }
+  return { month: monthKey, channel: 'YouTube', values: {
+    'Video Views': Math.max(0, viewsNow - +start),
+    'Followers': +ch.statistics.subscriberCount || 0
+  } };
 }
 
 // ---- Website (Google Analytics 4) -----------------------------------------

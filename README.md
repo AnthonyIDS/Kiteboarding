@@ -123,7 +123,9 @@ The page remembers the marketing key separately from the team key, so each page 
 1. In the marketing spreadsheet's Apps Script, click **+** next to **Files**, pick **Script**, and name it `marketing-sync`.
 2. Paste [`apps-script/marketing-sync.gs`](apps-script/marketing-sync.gs) into it (**Copy raw file** on GitHub) and click **Save**.
 3. Click **+** next to **Services** and add, one at a time: **YouTube Data API v3**, **YouTube Analytics API**, **Google Analytics Data API**, **Google Analytics Admin API**. Keep the names Google suggests.
-4. Pick **setupAutoSync** in the toolbar and click **Run**. Allow access when Google asks. The **Execution log** says how many months it filled for YouTube and the website.
+4. Check `SYNC_YOUTUBE_HANDLE` near the top matches your channel's @handle (needed when the channel is a Brand Account), then pick **setupAutoSync** in the toolbar and click **Run**. Allow access when Google asks. The **Execution log** says how many months it filled for YouTube and the website.
+
+**YouTube channel on a different Google account:** share the marketing spreadsheet with that account as an editor. Sign in to Google as that account, open the spreadsheet, click **Extensions → Apps Script**, pick **setupYouTubeSync** and click **Run**. From then on YouTube syncs as that account, and the main sync only does the website.
 
 No new deployment is needed: the dashboard already reads every row of Monthly Numbers. If the log says there are several Analytics properties, put the right number in `SYNC_GA4_PROPERTY_ID` and run `syncAnalytics`.
 
