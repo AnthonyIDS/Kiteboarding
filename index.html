@@ -197,6 +197,7 @@
   .req-pills { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
   .pill.jetski { background: var(--orange-soft); color: var(--orange); }
   .pill.repeat { background: var(--purple-soft); color: var(--purple); }
+  .pill.complete { background: var(--green-soft); color: var(--green); }
 
   /* Team notes and Jetski Needed */
   .team { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
@@ -210,6 +211,7 @@
   .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
   .seg button[data-jetski="yes"][aria-pressed="true"] { background: var(--orange); color: #fff; }
   .seg button[data-client="repeat"][aria-pressed="true"] { background: var(--purple); color: #fff; }
+  .seg button[data-client="complete"][aria-pressed="true"] { background: var(--green); color: #fff; }
   .team-row + .team-row { margin-top: 8px; }
   .ctype { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 13px; color: var(--muted); }
   .ctype .seg button { height: 26px; min-width: 64px; }
@@ -752,7 +754,7 @@
         idx,
         id,
         jetski: t.jetski === true,
-        repeat: t.client === 'Repeat',
+        client: t.client === 'Repeat' || t.client === 'Complete' ? t.client : 'New',
         teamNotes: t.notes ? String(t.notes) : '',
         name: isBlank(name) ? '' : String(name).trim(),
         status: lc.status && !isBlank(r[lc.status]) ? String(r[lc.status]).trim() : '',
@@ -882,12 +884,14 @@
     return parts.some(Boolean) ? parts.join('|') : 'row-' + idx;
   }
   const jetskiPill = (l) => (l.jetski ? '<span class="pill jetski">Jetski needed</span>' : '');
-  const repeatPill = (l) => (l.repeat ? '<span class="pill repeat">Repeat client</span>' : '');
-  // New / Repeat client switch. Not set yet counts as New.
+  const repeatPill = (l) => (l.client === 'Repeat' ? '<span class="pill repeat">Repeat client</span>'
+    : l.client === 'Complete' ? '<span class="pill complete">Complete</span>' : '');
+  // New / Repeat / Complete client switch. Not set yet counts as New.
+  const CLIENT_TYPES = ['New', 'Repeat', 'Complete'];
   function clientSeg(l, off) {
-    return '<div class="seg" role="group" aria-label="' + esc('New or repeat client: ' + (l.name || 'this student')) + '">' +
-      '<button type="button" data-client="new" aria-pressed="' + !l.repeat + '"' + off + '>New</button>' +
-      '<button type="button" data-client="repeat" aria-pressed="' + l.repeat + '"' + off + '>Repeat</button></div>';
+    return '<div class="seg" role="group" aria-label="' + esc('New, repeat or complete client: ' + (l.name || 'this student')) + '">' +
+      CLIENT_TYPES.map((t) => '<button type="button" data-client="' + t.toLowerCase() + '" aria-pressed="' + (l.client === t) + '"' + off + '>' + t + '</button>').join('') +
+      '</div>';
   }
 
   // Time of a requested lesson, for sorting (minutes after midnight) and
@@ -1063,7 +1067,7 @@
     const ready = state.model.teamReady;
     const busy = !!state.saving[l.id];
     const off = !ready || busy ? ' disabled' : '';
-    const msg = !ready ? { text: 'To save notes, Jetski Needed and New / Repeat, update the Apps Script (see the README).' } : state.msgs[l.id];
+    const msg = !ready ? { text: 'To save notes, Jetski Needed and New / Repeat / Complete, update the Apps Script (see the README).' } : state.msgs[l.id];
     const label = esc('Jetski Needed for ' + (l.name || 'this student'));
     return '<div class="team" data-id="' + esc(l.id) + '" data-key="' + esc(l.id) + '">' +
       '<div class="team-row"><span class="team-lbl">Jetski Needed</span>' +
@@ -1164,26 +1168,30 @@
       const stamp = fmtDay(new Date()) + ', ' + fmtTime(new Date());
       return {
         jetski: 'jetski' in patch ? patch.jetski : l.jetski,
-        client: 'repeat' in patch ? (patch.repeat ? 'Repeat' : 'New') : (l.repeat ? 'Repeat' : ''),
+        client: patch.client || l.client,
         notes: patch.note ? stamp + ' · ' + by + ': ' + patch.note + (l.teamNotes ? '\n' + l.teamNotes : '') : l.teamNotes
       };
     }
     const q = new URLSearchParams({ key: getKey(), action: 'save', id: l.id, student: l.name, by });
     if ('jetski' in patch) q.set('jetski', patch.jetski ? 'yes' : 'no');
-    if ('repeat' in patch) q.set('client', patch.repeat ? 'repeat' : 'new');
+    if (patch.client) q.set('client', patch.client.toLowerCase());
     if (patch.note) q.set('note', patch.note);
     const res = await fetch(API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + q.toString(), { cache: 'no-store' });
     let json;
     try { json = JSON.parse(await res.text()); } catch (e) { throw new Error('Couldn’t save. Check your connection and try again.'); }
     if (json.error === 'unauthorized') throw new Error('The access key no longer works. Click Lock and enter the new key.');
     if (!json.ok) {
-      // A script from before New / Repeat ignores "client" and finds nothing to save.
-      if ('repeat' in patch && json.error === 'Nothing to save.') throw new Error('Switching New / Repeat needs the updated Apps Script. See the README.');
+      // An older script ignores a "client" it doesn't know and finds nothing to save.
+      if (patch.client && json.error === 'Nothing to save.') throw new Error(clientUpdateMsg(patch.client));
       throw new Error(json.error || 'Couldn’t save.');
     }
     if (!json.record) throw new Error('Saving needs the updated Apps Script. See the README.');
-    if ('repeat' in patch && !('client' in json.record)) throw new Error('Switching New / Repeat needs the updated Apps Script. See the README.');
+    if (patch.client && json.record.client !== patch.client) throw new Error(clientUpdateMsg(patch.client));
     return json.record;
+  }
+
+  function clientUpdateMsg(type) {
+    return (type === 'Complete' ? 'Marking a client Complete' : 'Switching New / Repeat') + ' needs the updated Apps Script. See the README.';
   }
 
   // Re-renders without losing the place of someone typing in another card.
@@ -1209,22 +1217,22 @@
     key = key || id;
     const l = state.model && state.model.byId[id];
     if (!l || state.saving[id]) return;
-    const before = { jetski: l.jetski, repeat: l.repeat, teamNotes: l.teamNotes };
+    const before = { jetski: l.jetski, client: l.client, teamNotes: l.teamNotes };
     if ('jetski' in patch) l.jetski = patch.jetski; // show it right away
-    if ('repeat' in patch) l.repeat = patch.repeat;
+    if (patch.client) l.client = patch.client;
     state.saving[id] = true;
     state.msgs[key] = { text: 'Saving…' };
     renderKeepFocus();
     try {
       const rec = await saveTeam(l, patch);
       l.jetski = rec.jetski === true;
-      if ('client' in rec) l.repeat = rec.client === 'Repeat';
+      if ('client' in rec) l.client = rec.client === 'Repeat' || rec.client === 'Complete' ? rec.client : 'New';
       l.teamNotes = rec.notes ? String(rec.notes) : '';
       if (patch.note) delete state.drafts[key];
       state.msgs[key] = { text: 'Saved. The team sees it after Refresh.' };
     } catch (err) {
       l.jetski = before.jetski;
-      l.repeat = before.repeat;
+      l.client = before.client;
       l.teamNotes = before.teamNotes;
       state.msgs[key] = { text: err.message || 'Couldn’t save.', error: true };
     } finally {
@@ -1477,7 +1485,7 @@
         .filter(Boolean).join(' · ');
       return '<li class="' + icClass(l) + (isOpen(l.status) ? '' : ' past') + '"><div><strong>' + esc(l.name || 'Unnamed request') + '</strong>' +
         (l.status ? ' <span class="pill ' + statusTone(l.status) + '">' + esc(l.status) + '</span>' : '') +
-        (l.repeat ? ' ' + repeatPill(l) : '') +
+        (l.client !== 'New' ? ' ' + repeatPill(l) : '') +
         (l.jetski ? ' ' + jetskiPill(l) : '') +
         (sub ? '<div class="muted">' + esc(sub) + '</div>' : '') +
         (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') +
@@ -1834,7 +1842,7 @@
     }
     updateTeam(id, { note }, key);
   }
-  // New / Repeat, on a request card or under Instructor's clients.
+  // New / Repeat / Complete, on a request card or under Instructor's clients.
   function clientClick(e) {
     const btn = e.target.closest('[data-client]');
     if (!btn || !state.model) return false;
@@ -1842,9 +1850,9 @@
     const id = holder && holder.dataset.id;
     const l = id && state.model.byId[id];
     if (!l || btn.disabled) return true;
-    const want = btn.dataset.client === 'repeat';
+    const want = CLIENT_TYPES.find((t) => t.toLowerCase() === btn.dataset.client);
     // Messages go to the notes box under the same client.
-    if (l.repeat !== want) updateTeam(id, { repeat: want }, holder.classList.contains('ctype') ? 'c:' + id : id);
+    if (want && l.client !== want) updateTeam(id, { client: want }, holder.classList.contains('ctype') ? 'c:' + id : id);
     return true;
   }
   $('clients-list').addEventListener('click', clientClick);
