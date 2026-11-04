@@ -333,6 +333,9 @@
   .clients h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   .clients h3 select { width: auto; min-width: 160px; height: 32px; padding: 0 8px; font-weight: 500; max-width: 60%; }
   .clients .past { opacity: .7; }
+  .avail-inst { width: auto; min-width: 170px; height: 34px; padding: 0 8px; font-weight: 500; }
+  .ctype select, .team-row select { width: auto; min-width: 150px; height: 30px; padding: 0 8px; font-size: 13px; }
+  .clients-msg { padding: 8px 14px 0; }
   .clients li > div { flex: 1; min-width: 0; }
   .cnotes { margin-top: 8px; padding-top: 0; border-top: 0; }
   .cnotes summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); width: max-content; max-width: 100%; }
@@ -507,7 +510,8 @@
   </section>
 
   <section class="panel" aria-labelledby="avail-h" id="avail-panel" hidden>
-    <div class="panel-head"><h2 id="avail-h">Student availability<span class="count" id="avail-count"></span></h2></div>
+    <div class="panel-head"><h2 id="avail-h">Student availability<span class="count" id="avail-count"></span></h2>
+      <select class="field avail-inst" id="avail-inst" aria-label="Show students of" hidden></select></div>
     <div class="cal-note" id="avail-note"></div>
     <div class="legend" id="avail-legend" hidden></div>
     <div class="panel-body">
@@ -515,6 +519,7 @@
       <div class="avail-col clients" id="clients" hidden>
         <h3><span>Instructor’s clients<span class="count" id="clients-count"></span></span>
           <select class="field" id="clients-inst" aria-label="Instructor"></select></h3>
+        <div class="team-msg clients-msg" id="clients-msg" role="status"></div>
         <ul id="clients-list"></ul>
       </div>
     </div>
@@ -567,6 +572,7 @@
 
   const KEY_STORAGE = 'ksp-dashboard-key';
   const CLIENTS_STORAGE = 'ksp-dashboard-clients-of';
+  const AVAIL_STORAGE = 'ksp-dashboard-availability-of';
   const NAME_STORAGE = 'ksp-dashboard-name';
   const DAY_MS = 864e5;
 
@@ -711,6 +717,43 @@
     return { headers: (t && t.headers) || [], rows: (t && t.rows) || [], error: (t && t.error) || '' };
   }
 
+  // Instructor colors: the fixed ones first, then free colors in name order.
+  function instructorColors(lessons) {
+    const instructors = {};
+    const instNames = Array.from(new Set(lessons.map((l) => l.instructor).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b));
+    const taken = new Set();
+    instNames.forEach((n) => {
+      const c = INSTRUCTOR_COLORS[instKey(n)];
+      if (c && !instructors[instKey(n)]) { instructors[instKey(n)] = { name: n, color: c }; taken.add(c); }
+    });
+    instNames.forEach((n) => {
+      const k = instKey(n);
+      if (instructors[k]) return;
+      const c = IC_PALETTE.find((x) => !taken.has(x)) || IC_PALETTE[Object.keys(instructors).length % IC_PALETTE.length];
+      taken.add(c);
+      instructors[k] = { name: n, color: c };
+    });
+    return instructors;
+  }
+
+  // Everyone who can have clients: instructors in the sheet plus those with a calendar.
+  function instructorNames(m) {
+    const names = Object.keys(m.instructors).map((k) => m.instructors[k].name);
+    m.calendars.forEach((n) => { if (!names.some((x) => instKey(x) === instKey(n))) names.push(n); });
+    return names.sort((a, b) => a.localeCompare(b));
+  }
+
+  // Dropdown that changes a client's instructor. Saved on Dashboard Notes.
+  function instSelect(l, off) {
+    const names = instructorNames(state.model);
+    if (l.instructor && !names.some((n) => instKey(n) === instKey(l.instructor))) names.push(l.instructor);
+    const cur = names.find((n) => l.instructor && instKey(n) === instKey(l.instructor)) || '';
+    return '<select class="field" name="inst" aria-label="' + esc('Instructor for ' + (l.name || 'this student')) + '"' + off + '>' +
+      names.map((n) => '<option value="' + esc(n) + '"' + (n === cur ? ' selected' : '') + '>' + esc(n) + '</option>').join('') +
+      '<option value="' + NO_INST + '"' + (cur ? '' : ' selected') + '>No instructor yet</option></select>';
+  }
+
   function buildModel(data) {
     const now = new Date();
 
@@ -773,8 +816,11 @@
         altDate: lc.altDate ? r[lc.altDate] : '',
         time: lc.time ? r[lc.time] : '',
         avail: lc.avail && !isBlank(r[lc.avail]) ? String(r[lc.avail]).trim() : '',
-        instructor: lc.instructor && !isBlank(r[lc.instructor]) ? String(r[lc.instructor]).trim() : '',
-        hay: lh.map((h) => r[h]).concat(fields.map((f) => f[1]), [t.notes || '']).join(' \u0001 ').toLowerCase()
+        // An instructor changed on the dashboard (Dashboard Notes) wins over the sheet's column.
+        sheetInstructor: lc.instructor && !isBlank(r[lc.instructor]) ? String(r[lc.instructor]).trim() : '',
+        instructor: t.instructor === 'None' ? '' : t.instructor ? String(t.instructor).trim()
+          : lc.instructor && !isBlank(r[lc.instructor]) ? String(r[lc.instructor]).trim() : '',
+        hay: lh.map((h) => r[h]).concat(fields.map((f) => f[1]), [t.notes || '', t.instructor || '']).join(' \u0001 ').toLowerCase()
       };
     });
     // Newest first; rows without a date keep sheet order (newer rows are lower).
@@ -830,22 +876,7 @@
     });
     Object.keys(groups).forEach((g) => groups[g].sort((a, b) => a.name.localeCompare(b.name)));
 
-    // Instructor colors: the fixed ones first, then free colors in name order.
-    const instructors = {};
-    const instNames = Array.from(new Set(lessons.map((l) => l.instructor).filter(Boolean)))
-      .sort((a, b) => a.localeCompare(b));
-    const taken = new Set();
-    instNames.forEach((n) => {
-      const c = INSTRUCTOR_COLORS[instKey(n)];
-      if (c) { instructors[instKey(n)] = { name: n, color: c }; taken.add(c); }
-    });
-    instNames.forEach((n) => {
-      const k = instKey(n);
-      if (instructors[k]) return;
-      const c = IC_PALETTE.find((x) => !taken.has(x)) || IC_PALETTE[Object.keys(instructors).length % IC_PALETTE.length];
-      taken.add(c);
-      instructors[k] = { name: n, color: c };
-    });
+    const instructors = instructorColors(lessons);
 
     const weekAgo = now.getTime() - 7 * DAY_MS;
     return {
@@ -1073,7 +1104,7 @@
     const ready = state.model.teamReady;
     const busy = !!state.saving[l.id];
     const off = !ready || busy ? ' disabled' : '';
-    const msg = !ready ? { text: 'To save notes, Jetski Needed and New / Repeat / Complete, update the Apps Script (see the README).' } : state.msgs[l.id];
+    const msg = !ready ? { text: 'To save notes, Jetski Needed, New / Repeat / Complete and instructor changes, update the Apps Script (see the README).' } : state.msgs[l.id];
     const label = esc('Jetski Needed for ' + (l.name || 'this student'));
     return '<div class="team" data-id="' + esc(l.id) + '" data-key="' + esc(l.id) + '">' +
       '<div class="team-row"><span class="team-lbl">Jetski Needed</span>' +
@@ -1081,6 +1112,7 @@
       '<button type="button" data-jetski="no" aria-pressed="' + !l.jetski + '"' + off + '>No</button>' +
       '<button type="button" data-jetski="yes" aria-pressed="' + l.jetski + '"' + off + '>Yes</button></div></div>' +
       '<div class="team-row"><span class="team-lbl">Client</span>' + clientSeg(l, off) + '</div>' +
+      (state.model.instCol ? '<div class="team-row"><span class="team-lbl">Instructor</span>' + instSelect(l, off) + '</div>' : '') +
       (l.teamNotes ? '<div class="team-notes"><b>Team notes</b>\n' + esc(l.teamNotes) + '</div>' : '') +
       '<form class="note-form">' +
       '<textarea name="note" maxlength="2000" placeholder="Leave a note for the team" aria-label="' + esc('Note about ' + (l.name || 'this student')) + '"' + off + '>' +
@@ -1175,12 +1207,14 @@
       return {
         jetski: 'jetski' in patch ? patch.jetski : l.jetski,
         client: patch.client || l.client,
+        instructor: 'instructor' in patch ? patch.instructor || 'None' : '',
         notes: patch.note ? stamp + ' · ' + by + ': ' + patch.note + (l.teamNotes ? '\n' + l.teamNotes : '') : l.teamNotes
       };
     }
     const q = new URLSearchParams({ key: getKey(), action: 'save', id: l.id, student: l.name, by });
     if ('jetski' in patch) q.set('jetski', patch.jetski ? 'yes' : 'no');
     if (patch.client) q.set('client', patch.client.toLowerCase());
+    if ('instructor' in patch) q.set('instructor', patch.instructor || 'none');
     if (patch.note) q.set('note', patch.note);
     const res = await fetch(API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + q.toString(), { cache: 'no-store' });
     let json;
@@ -1189,12 +1223,15 @@
     if (!json.ok) {
       // An older script ignores a "client" it doesn't know and finds nothing to save.
       if (patch.client && json.error === 'Nothing to save.') throw new Error(clientUpdateMsg(patch.client));
+      if ('instructor' in patch && json.error === 'Nothing to save.') throw new Error(INST_UPDATE_MSG);
       throw new Error(json.error || 'Couldn’t save.');
     }
     if (!json.record) throw new Error('Saving needs the updated Apps Script. See the README.');
     if (patch.client && json.record.client !== patch.client) throw new Error(clientUpdateMsg(patch.client));
+    if ('instructor' in patch && !('instructor' in json.record)) throw new Error(INST_UPDATE_MSG);
     return json.record;
   }
+  const INST_UPDATE_MSG = 'Changing a client’s instructor needs the updated Apps Script. See the README.';
 
   function clientUpdateMsg(type) {
     return (type === 'Complete' ? 'Marking a client Complete' : 'Switching New / Repeat') + ' needs the updated Apps Script. See the README.';
@@ -1223,9 +1260,10 @@
     key = key || id;
     const l = state.model && state.model.byId[id];
     if (!l || state.saving[id]) return;
-    const before = { jetski: l.jetski, client: l.client, teamNotes: l.teamNotes };
+    const before = { jetski: l.jetski, client: l.client, teamNotes: l.teamNotes, instructor: l.instructor };
     if ('jetski' in patch) l.jetski = patch.jetski; // show it right away
     if (patch.client) l.client = patch.client;
+    if ('instructor' in patch) setInstructor(l, patch.instructor);
     state.saving[id] = true;
     state.msgs[key] = { text: 'Saving…' };
     renderKeepFocus();
@@ -1233,18 +1271,30 @@
       const rec = await saveTeam(l, patch);
       l.jetski = rec.jetski === true;
       if ('client' in rec) l.client = rec.client === 'Repeat' || rec.client === 'Complete' ? rec.client : 'New';
+      if (rec.instructor) setInstructor(l, rec.instructor === 'None' ? '' : rec.instructor);
       l.teamNotes = rec.notes ? String(rec.notes) : '';
       if (patch.note) delete state.drafts[key];
       state.msgs[key] = { text: 'Saved. The team sees it after Refresh.' };
+      if ('instructor' in patch && key.indexOf('c:') === 0) {
+        state.clientsMsg = { text: (l.name || 'The student') + ' is now ' + (l.instructor ? l.instructor + '’s client.' : 'listed under No instructor yet.') };
+      }
     } catch (err) {
       l.jetski = before.jetski;
       l.client = before.client;
       l.teamNotes = before.teamNotes;
+      if ('instructor' in patch) setInstructor(l, before.instructor);
       state.msgs[key] = { text: err.message || 'Couldn’t save.', error: true };
+      if ('instructor' in patch && key.indexOf('c:') === 0) state.clientsMsg = { text: err.message || 'Couldn’t save.', error: true };
     } finally {
       delete state.saving[id];
       if (state.model && state.model.byId[id] === l) renderKeepFocus();
     }
+  }
+
+  // Changes a lesson's instructor in the page and refreshes the instructor colors.
+  function setInstructor(l, name) {
+    l.instructor = name || '';
+    state.model.instructors = instructorColors(state.model.lessons);
   }
 
   // Calendar writes go through the same web app as notes (GET ...&action=...).
@@ -1421,10 +1471,32 @@
   }
 
   // ---------- Student availability ----------
+  // "Show students of": All instructors, one instructor, or No instructor yet.
+  const ALL_INST = '';
+  function availInst() {
+    const m = state.model;
+    const sel = $('avail-inst');
+    sel.hidden = !m.instCol;
+    if (!m.instCol) return ALL_INST;
+    const names = instructorNames(m);
+    let cur = state.availInst;
+    if (cur == null) { try { cur = localStorage.getItem(AVAIL_STORAGE) || ALL_INST; } catch (e) { cur = ALL_INST; } }
+    if (cur !== ALL_INST && cur !== NO_INST) cur = names.find((n) => instKey(n) === instKey(cur)) || ALL_INST;
+    state.availInst = cur;
+    sel.innerHTML = '<option value="">All instructors</option>' +
+      names.map((n) => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('') +
+      '<option value="' + NO_INST + '">No instructor yet</option>';
+    sel.value = cur;
+    return cur;
+  }
+  const ofInst = (inst) => (l) => inst === ALL_INST ? true
+    : inst === NO_INST ? !l.instructor : !!l.instructor && instKey(l.instructor) === instKey(inst);
+
   function renderAvailability() {
     const m = state.model;
     $('avail-panel').hidden = !m.availCol && !m.instCol;
     $('avail-groups').hidden = !m.availCol;
+    const inst = availInst();
     renderClients();
     if (!m.availCol) {
       $('avail-count').textContent = '';
@@ -1433,15 +1505,18 @@
       return;
     }
     const cols = [['flexible', 'Flexible'], ['weekends', 'Weekends'], ['weekdays', 'Weekdays']];
-    const people = new Set(cols.reduce((all, c) => all.concat(m.groups[c[0]]), []));
+    const groups = {};
+    cols.forEach((c) => { groups[c[0]] = m.groups[c[0]].filter(ofInst(inst)); });
+    const people = new Set(cols.reduce((all, c) => all.concat(groups[c[0]]), []));
     $('avail-count').textContent = String(people.size);
-    let note = 'Open requests grouped by their “' + m.availCol + '”. Someone free on both a weekday and a weekend day is in both lists.';
+    let note = (inst === ALL_INST ? 'Open requests' : inst === NO_INST ? 'Open requests with no instructor yet,' : inst + '’s open requests,') +
+      ' grouped by their “' + m.availCol + '”. Someone free on both a weekday and a weekend day is in both lists.';
     if (m.noAvail) note += ' ' + m.noAvail + (m.noAvail === 1 ? ' student has' : ' students have') + ' no availability the dashboard can read.';
     $('avail-note').textContent = note;
     $('avail-legend').innerHTML = m.instCol ? legendHtml() : '';
     $('avail-legend').hidden = !m.instCol;
     $('avail-groups').innerHTML = cols.map((c) => {
-      const list = m.groups[c[0]];
+      const list = groups[c[0]];
       return '<div class="avail-col"><h3>' + esc(c[1]) + '<span class="count">' + list.length + '</span></h3>' + (list.length
         ? '<ul>' + list.map((l) => {
             const contact = [];
@@ -1466,11 +1541,13 @@
     const m = state.model;
     $('clients').hidden = !m.instCol;
     if (!m.instCol) return;
-    const names = Object.keys(m.instructors).map((k) => m.instructors[k].name);
-    m.calendars.forEach((n) => { if (!names.some((x) => instKey(x) === instKey(n))) names.push(n); });
-    names.sort((a, b) => a.localeCompare(b));
+    const names = instructorNames(m);
     const sel = $('clients-inst');
-    let cur = sel.value;
+    const msg = state.clientsMsg;
+    $('clients-msg').textContent = msg ? msg.text : '';
+    $('clients-msg').classList.toggle('error', !!(msg && msg.error));
+    // Picking one instructor at the top of Student availability shows their clients here too.
+    let cur = state.availInst && state.availInst !== ALL_INST ? state.availInst : sel.value;
     if (!cur) { try { cur = localStorage.getItem(CLIENTS_STORAGE) || ''; } catch (e) { cur = ''; } }
     if (cur !== NO_INST && !names.some((n) => instKey(n) === instKey(cur))) cur = names[0] || NO_INST;
     sel.innerHTML = names.map((n) => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('') +
@@ -1496,6 +1573,7 @@
         (sub ? '<div class="muted">' + esc(sub) + '</div>' : '') +
         (contact.length ? '<div class="contact">' + contact.join('') + '</div>' : '') +
         '<div class="ctype" data-id="' + esc(l.id) + '">Client' + clientSeg(l, !m.teamReady || state.saving[l.id] ? ' disabled' : '') + '</div>' +
+        '<div class="ctype" data-id="' + esc(l.id) + '">Instructor' + instSelect(l, !m.teamReady || state.saving[l.id] ? ' disabled' : '') + '</div>' +
         clientNotesHtml(l) + '</div></li>';
     }).join('') : '<div class="empty">No students for ' + esc(cur === NO_INST ? 'this list' : cur) + ' yet.</div>';
   }
@@ -1527,7 +1605,22 @@
   }, true);
   $('clients-inst').addEventListener('change', (e) => {
     try { localStorage.setItem(CLIENTS_STORAGE, e.target.value); } catch (err) { /* ignore */ }
-    if (state.model) renderClients();
+    state.clientsMsg = null;
+    // Keep the switch at the top in step, unless it shows everyone.
+    if (state.availInst && state.availInst !== ALL_INST) {
+      state.availInst = e.target.value;
+      try { localStorage.setItem(AVAIL_STORAGE, e.target.value); } catch (err) { /* ignore */ }
+    }
+    if (state.model) renderAvailability();
+  });
+  $('avail-inst').addEventListener('change', (e) => {
+    state.availInst = e.target.value;
+    state.clientsMsg = null;
+    try { localStorage.setItem(AVAIL_STORAGE, e.target.value); } catch (err) { /* ignore */ }
+    if (e.target.value !== ALL_INST) {
+      try { localStorage.setItem(CLIENTS_STORAGE, e.target.value); } catch (err) { /* ignore */ }
+    }
+    if (state.model) renderAvailability();
   });
 
   // Requests dated for this day, then (today onward) people available on its weekday.
@@ -1821,7 +1914,7 @@
     if (id && state.book[id]) state.book[id][e.target.name] = e.target.value;
     return !!id;
   };
-  $('lessons').addEventListener('change', bookField);
+  $('lessons').addEventListener('change', (e) => { if (!instChange(e)) bookField(e); });
   // Typing and "Add note", in a request card or under Instructor's clients.
   function noteInput(e) {
     const box = e.target.closest('.team');
@@ -1862,6 +1955,20 @@
     if (want && l.client !== want) updateTeam(id, { client: want }, holder.classList.contains('ctype') ? 'c:' + id : id);
     return true;
   }
+  // Instructor dropdown, on a request card or under Instructor's clients.
+  function instChange(e) {
+    const sel = e.target;
+    if (sel.name !== 'inst' || !state.model) return false;
+    const holder = sel.closest('.team, .ctype');
+    const id = holder && holder.dataset.id;
+    const l = id && state.model.byId[id];
+    if (!l) return true;
+    const want = sel.value === NO_INST ? '' : sel.value;
+    if (instKey(want) === instKey(l.instructor || '')) return true;
+    updateTeam(id, { instructor: want }, holder.classList.contains('ctype') ? 'c:' + id : id);
+    return true;
+  }
+  $('clients-list').addEventListener('change', instChange);
   $('clients-list').addEventListener('click', clientClick);
   $('clients-list').addEventListener('input', noteInput);
   $('clients-list').addEventListener('submit', (e) => { e.preventDefault(); noteSubmit(e); });
