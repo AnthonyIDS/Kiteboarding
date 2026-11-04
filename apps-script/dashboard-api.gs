@@ -5,7 +5,7 @@
  * dashboard as JSON. It never changes the Lesson Requests tab, so the
  * website form that writes there keeps working.
  *
- * Team notes, the "Jetski Needed" switch and the New / Repeat client switch
+ * Team notes, the "Jetski Needed" switch and the New / Repeat / Complete client switch
  * are saved on a separate tab, "Dashboard Notes", which the script creates
  * the first time someone saves. One row per student: Request ID, Student,
  * Jetski Needed, Notes, Updated, Updated By, Client Type. Newest notes are at
@@ -19,7 +19,7 @@
  * GET <exec url>?key=DASHBOARD_KEY returns
  *   { ok, updated, lessons: { headers: [...], rows: [{ header: value }] },
  *     team: { <request id>: { jetski, client, notes, updated, by } } }
- * GET ...&action=save&id=...&student=...&by=...[&jetski=yes|no][&client=new|repeat][&note=...]
+ * GET ...&action=save&id=...&student=...&by=...[&jetski=yes|no][&client=new|repeat|complete][&note=...]
  *   saves to Dashboard Notes and returns { ok, id, record }
  * GET ...&action=book&id=...&student=...&by=...&instructor=...&date=yyyy-MM-dd
  *       &start=HH:mm&minutes=...[&phone=...][&email=...][&lesson=...]
@@ -210,7 +210,7 @@ function dashCell_(value, displayValue, tz) {
 
 // ---- Team notes and Jetski Needed (the "Dashboard Notes" tab) ------------
 
-/** { <request id>: { jetski: true|false|null, client: 'New'|'Repeat'|'', notes, updated, by } } */
+/** { <request id>: { jetski: true|false|null, client: 'New'|'Repeat'|'Complete'|'', notes, updated, by } } */
 function dashReadTeam_(ss) {
   const out = {};
   const sheet = ss.getSheetByName(DASH_NOTES_TAB);
@@ -224,7 +224,7 @@ function dashReadTeam_(ss) {
   return out;
 }
 
-/** Saves one student's Jetski setting, New / Repeat, and/or a new note. */
+/** Saves one student's Jetski setting, New / Repeat / Complete, and/or a new note. */
 function dashSave_(ss, tz, p) {
   const id = dashClean_(p.id, 300);
   if (!id) return { ok: false, error: 'Missing request id.' };
@@ -434,10 +434,10 @@ function dashUnbook_(ss, tz, p) {
   }
 }
 
-/** 'New', 'Repeat', or '' when not set. */
+/** 'New', 'Repeat', 'Complete', or '' when not set. */
 function dashClientType_(v) {
   const s = String(v == null ? '' : v).trim().toLowerCase();
-  return s === 'new' ? 'New' : s === 'repeat' ? 'Repeat' : '';
+  return s === 'new' ? 'New' : s === 'repeat' ? 'Repeat' : s === 'complete' ? 'Complete' : '';
 }
 
 function dashYesNo_(v) {
