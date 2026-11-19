@@ -333,6 +333,8 @@
   .clients h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   .clients h3 select { width: auto; min-width: 160px; height: 32px; padding: 0 8px; font-weight: 500; max-width: 60%; }
   .clients .past { opacity: .7; }
+  .clients-title { display: inline-flex; align-items: center; gap: 2px; }
+  .clients h3 #clients-view { min-width: 0; max-width: none; font-weight: 600; font-size: 14px; }
   .avail-inst { width: auto; min-width: 170px; height: 34px; padding: 0 8px; font-weight: 500; }
   .ctype select, .team-row select { width: auto; min-width: 150px; height: 30px; padding: 0 8px; font-size: 13px; }
   .clients-msg { padding: 8px 14px 0; }
@@ -517,7 +519,9 @@
     <div class="panel-body">
       <div class="avail-grid" id="avail-groups"></div>
       <div class="avail-col clients" id="clients" hidden>
-        <h3><span>Instructor’s clients<span class="count" id="clients-count"></span></span>
+        <h3><span class="clients-title"><select class="field" id="clients-view" aria-label="Which students to show">
+            <option value="current">Instructor’s clients</option><option value="graduated">Graduated Students</option>
+          </select><span class="count" id="clients-count"></span></span>
           <select class="field" id="clients-inst" aria-label="Instructor"></select></h3>
         <div class="team-msg clients-msg" id="clients-msg" role="status"></div>
         <ul id="clients-list"></ul>
@@ -572,6 +576,7 @@
 
   const KEY_STORAGE = 'ksp-dashboard-key';
   const CLIENTS_STORAGE = 'ksp-dashboard-clients-of';
+  const CLIENTS_VIEW_STORAGE = 'ksp-dashboard-clients-view';
   const AVAIL_STORAGE = 'ksp-dashboard-availability-of';
   const NAME_STORAGE = 'ksp-dashboard-name';
   const DAY_MS = 864e5;
@@ -1266,6 +1271,10 @@
     if ('instructor' in patch) setInstructor(l, patch.instructor);
     state.saving[id] = true;
     state.msgs[key] = { text: 'Saving…' };
+    // Marking Complete (or undoing it) moves the row between Instructor's clients
+    // and Graduated Students, so say so above the list.
+    const moving = patch.client && key.indexOf('c:') === 0 && (patch.client === 'Complete') !== (before.client === 'Complete');
+    if (moving) state.clientsMsg = { text: 'Saving…' };
     renderKeepFocus();
     try {
       const rec = await saveTeam(l, patch);
@@ -1275,6 +1284,11 @@
       l.teamNotes = rec.notes ? String(rec.notes) : '';
       if (patch.note) delete state.drafts[key];
       state.msgs[key] = { text: 'Saved. The team sees it after Refresh.' };
+      if (moving) {
+        state.clientsMsg = { text: (l.name || 'The student') + (l.client === 'Complete'
+          ? ' is marked Complete and moved to Graduated Students.'
+          : ' moved back to Instructor’s clients.') };
+      }
       if ('instructor' in patch && key.indexOf('c:') === 0) {
         state.clientsMsg = { text: (l.name || 'The student') + ' is now ' + (l.instructor ? l.instructor + '’s client.' : 'listed under No instructor yet.') };
       }
@@ -1284,7 +1298,7 @@
       l.teamNotes = before.teamNotes;
       if ('instructor' in patch) setInstructor(l, before.instructor);
       state.msgs[key] = { text: err.message || 'Couldn’t save.', error: true };
-      if ('instructor' in patch && key.indexOf('c:') === 0) state.clientsMsg = { text: err.message || 'Couldn’t save.', error: true };
+      if (moving || ('instructor' in patch && key.indexOf('c:') === 0)) state.clientsMsg = { text: err.message || 'Couldn’t save.', error: true };
     } finally {
       delete state.saving[id];
       if (state.model && state.model.byId[id] === l) renderKeepFocus();
@@ -1536,6 +1550,8 @@
 
   // Instructor's clients: pick an instructor, see all their students.
   // Current students first, then cancelled or completed ones.
+  // The heading dropdown switches to Graduated Students: clients marked Complete,
+  // who no longer show under Instructor's clients.
   const NO_INST = '__none__';
   function renderClients() {
     const m = state.model;
@@ -1553,8 +1569,11 @@
     sel.innerHTML = names.map((n) => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('') +
       '<option value="' + NO_INST + '">No instructor yet</option>';
     sel.value = cur === NO_INST ? NO_INST : names.find((n) => instKey(n) === instKey(cur));
+    const grad = clientsView() === 'graduated';
+    $('clients-view').value = grad ? 'graduated' : 'current';
     const list = m.lessons
       .filter((l) => (cur === NO_INST ? !l.instructor : l.instructor && instKey(l.instructor) === instKey(cur)))
+      .filter((l) => (l.client === 'Complete') === grad)
       .sort((a, b) => isOpen(b.status) - isOpen(a.status) || a.name.localeCompare(b.name));
     $('clients-count').textContent = String(list.length);
     const today = startOfDay(new Date());
@@ -1575,8 +1594,22 @@
         '<div class="ctype" data-id="' + esc(l.id) + '">Client' + clientSeg(l, !m.teamReady || state.saving[l.id] ? ' disabled' : '') + '</div>' +
         '<div class="ctype" data-id="' + esc(l.id) + '">Instructor' + instSelect(l, !m.teamReady || state.saving[l.id] ? ' disabled' : '') + '</div>' +
         clientNotesHtml(l) + '</div></li>';
-    }).join('') : '<div class="empty">No students for ' + esc(cur === NO_INST ? 'this list' : cur) + ' yet.</div>';
+    }).join('') : '<div class="empty">' + (grad
+      ? 'No graduated students' + (cur === NO_INST ? ' without an instructor' : ' for ' + esc(cur)) + ' yet. Mark a client Complete to move them here.'
+      : 'No students for ' + esc(cur === NO_INST ? 'this list' : cur) + ' yet.') + '</div>';
   }
+  function clientsView() {
+    if (!state.clientsView) {
+      try { state.clientsView = localStorage.getItem(CLIENTS_VIEW_STORAGE) || ''; } catch (e) { /* ignore */ }
+    }
+    return state.clientsView === 'graduated' ? 'graduated' : 'current';
+  }
+  $('clients-view').addEventListener('change', (e) => {
+    state.clientsView = e.target.value;
+    try { localStorage.setItem(CLIENTS_VIEW_STORAGE, e.target.value); } catch (err) { /* ignore */ }
+    state.clientsMsg = null;
+    if (state.model) renderClients();
+  });
   // Notes for one client: the same team notes as their request card, behind a
   // "Notes" toggle so a long client list stays short.
   function clientNotesHtml(l) {
