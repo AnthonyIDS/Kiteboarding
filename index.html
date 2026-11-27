@@ -242,6 +242,23 @@
   .book-grid .field { height: 34px; padding: 0 8px; min-width: 0; }
   .book-form .note-actions .btn-primary { flex: 1; justify-content: center; }
 
+  /* Add or remove clients (under Lesson requests) */
+  .manage { margin: 0 18px 14px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+  .manage-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .manage-row h3 { margin: 0 auto 0 0; font-size: 14px; }
+  .manage-row .btn { height: 34px; }
+  .manage-row .field { height: 34px; width: 180px; }
+  .manage-row select.field { width: auto; min-width: 200px; max-width: 100%; padding: 0 8px; }
+  .manage .book-form { background: var(--surface); }
+  .manage .book-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+  .manage .team-msg { margin-top: 8px; }
+  .manage-removed { margin-top: 10px; font-size: 13.5px; }
+  .manage-removed summary { cursor: pointer; color: var(--muted); font-weight: 500; }
+  .manage-removed ul { list-style: none; margin: 6px 0 0; padding: 0; }
+  .manage-removed li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--border); }
+  .manage-removed li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .manage-removed .btn { height: 30px; padding: 0 10px; }
+
   /* Upcoming lessons (booked from the dashboard) */
   .ev-list { list-style: none; margin: 0; padding: 0; }
   .ev-list > li { padding: 10px 0; border-top: 1px solid var(--border); }
@@ -542,6 +559,25 @@
         <option value="">All clients</option><option value="New">New</option><option value="Repeat">Repeat</option><option value="Complete">Complete</option>
       </select>
     </div>
+    <div class="manage" id="manage" hidden>
+      <div class="manage-row">
+        <h3>Add or remove clients</h3>
+        <label class="ev-name"><span class="brand-sub">Your name</span><input class="field" id="manage-by" list="team-names" maxlength="60" autocomplete="off"></label>
+        <button class="btn btn-primary" type="button" id="add-open">Add client</button>
+        <button class="btn" type="button" id="remove-open">Remove client</button>
+      </div>
+      <form class="book-form" id="add-form" autocomplete="off" hidden></form>
+      <form class="book-form" id="remove-form" hidden>
+        <div class="manage-row">
+          <select class="field" id="remove-pick" aria-label="Client to remove"></select>
+          <button class="btn btn-danger" type="submit">Remove</button>
+          <button class="btn" type="button" data-close="remove">Cancel</button>
+        </div>
+        <div class="team-msg">Removing only hides the client on the dashboard. Their row stays on the sheet, and you can bring them back below.</div>
+      </form>
+      <div class="team-msg" id="manage-msg" role="status"></div>
+      <details class="manage-removed" id="removed-box" hidden><summary>Removed clients <span class="count" id="removed-count"></span></summary><ul id="removed-list"></ul></details>
+    </div>
     <div class="panel-body"><div class="req-grid" id="lessons"></div><datalist id="team-names"></datalist></div>
   </section>
 
@@ -587,7 +623,7 @@
   const DEMO = params.has('demo') || !API_READY;
 
   const $ = (id) => document.getElementById(id);
-  const state = { data: null, model: null, view: null, selected: null, loading: false, drafts: {}, msgs: {}, saving: {}, clientOpen: {}, book: {}, evEdit: {}, evBusy: null, demoEvents: null };
+  const state = { data: null, model: null, view: null, selected: null, loading: false, drafts: {}, msgs: {}, saving: {}, clientOpen: {}, book: {}, evEdit: {}, evBusy: null, demoEvents: null, manage: null, addDraft: {}, addSig: '', manageMsg: null, manageBusy: false };
   let memKey = '';
 
   // ---------- Storage (every call guarded) ----------
@@ -799,7 +835,7 @@
     lc.type = findCol(free, [/\blesson\b.*\b(type|package)\b/, /\b(lesson|package|service|type)\b/], [lc.date, lc.altDate, lc.time, lc.avail]);
 
     const team = data.team || {};
-    const lessons = L.rows.map((r, idx) => {
+    const all = L.rows.map((r, idx) => {
       const name = lc.name ? r[lc.name] : [r[lc.first], r[lc.last]].filter((x) => !isBlank(x)).join(' ');
       const fields = lh.filter((h) => used.indexOf(h) < 0 && !isBlank(r[h])).map((h) => [h, fmtValue(r[h])]);
       const id = requestId(r, lc, name, idx);
@@ -807,6 +843,7 @@
       return {
         idx,
         id,
+        removed: t.removed === true,
         jetski: t.jetski === true,
         client: t.client === 'Repeat' || t.client === 'Complete' ? t.client : 'New',
         teamNotes: t.notes ? String(t.notes) : '',
@@ -829,6 +866,10 @@
         hay: lh.map((h) => r[h]).concat(fields.map((f) => f[1]), [t.notes || '', t.instructor || '']).join(' \u0001 ').toLowerCase()
       };
     });
+    // Clients removed on the dashboard are left out everywhere but the
+    // "Removed clients" list, where they can be brought back.
+    const lessons = all.filter((l) => !l.removed);
+    const removed = all.filter((l) => l.removed).sort((a, b) => a.name.localeCompare(b.name));
     // Newest first; rows without a date keep sheet order (newer rows are lower).
     lessons.sort((a, b) => {
       const ta = a.submitted ? a.submitted.getTime() : -Infinity;
@@ -892,7 +933,10 @@
       calendars: DEMO ? Object.keys(GOOGLE_CALENDARS) : (Array.isArray(data.calendars) ? data.calendars : []),
       // Upcoming lessons the dashboard added to the calendars.
       events: Array.isArray(data.events) ? data.events : [],
-      byId: lessons.reduce((o, l) => { o[l.id] = l; return o; }, {}),
+      byId: all.reduce((o, l) => { o[l.id] = l; return o; }, {}),
+      removed,
+      cols: lc,
+      headers: lh,
       days,
       weekly,
       undated,
@@ -1036,6 +1080,7 @@
     renderEvents();
     renderAvailability();
     renderStatusFilter();
+    renderManage();
     renderLessons();
   }
 
@@ -1214,6 +1259,7 @@
         jetski: 'jetski' in patch ? patch.jetski : l.jetski,
         client: patch.client || l.client,
         instructor: 'instructor' in patch ? patch.instructor || 'None' : '',
+        removed: 'removed' in patch ? patch.removed : l.removed,
         notes: patch.note ? stamp + ' · ' + by + ': ' + patch.note + (l.teamNotes ? '\n' + l.teamNotes : '') : l.teamNotes
       };
     }
@@ -1221,6 +1267,7 @@
     if ('jetski' in patch) q.set('jetski', patch.jetski ? 'yes' : 'no');
     if (patch.client) q.set('client', patch.client.toLowerCase());
     if ('instructor' in patch) q.set('instructor', patch.instructor || 'none');
+    if ('removed' in patch) q.set('removed', patch.removed ? 'yes' : 'no');
     if (patch.note) q.set('note', patch.note);
     const res = await fetch(API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + q.toString(), { cache: 'no-store' });
     let json;
@@ -1230,14 +1277,17 @@
       // An older script ignores a "client" it doesn't know and finds nothing to save.
       if (patch.client && json.error === 'Nothing to save.') throw new Error(clientUpdateMsg(patch.client));
       if ('instructor' in patch && json.error === 'Nothing to save.') throw new Error(INST_UPDATE_MSG);
+      if ('removed' in patch && json.error === 'Nothing to save.') throw new Error(MANAGE_UPDATE_MSG);
       throw new Error(json.error || 'Couldn’t save.');
     }
     if (!json.record) throw new Error('Saving needs the updated Apps Script. See the README.');
     if (patch.client && json.record.client !== patch.client) throw new Error(clientUpdateMsg(patch.client));
     if ('instructor' in patch && !('instructor' in json.record)) throw new Error(INST_UPDATE_MSG);
+    if ('removed' in patch && json.record.removed !== patch.removed) throw new Error(MANAGE_UPDATE_MSG);
     return json.record;
   }
   const INST_UPDATE_MSG = 'Changing a client’s instructor needs the updated Apps Script. See the README.';
+  const MANAGE_UPDATE_MSG = 'Adding and removing clients needs the updated Apps Script. See the README.';
 
   function clientUpdateMsg(type) {
     return (type === 'Complete' ? 'Marking a client Complete' : 'Switching New / Repeat') + ' needs the updated Apps Script. See the README.';
@@ -1283,6 +1333,7 @@
       if ('client' in rec) l.client = rec.client === 'Repeat' || rec.client === 'Complete' ? rec.client : 'New';
       if (rec.instructor) setInstructor(l, rec.instructor === 'None' ? '' : rec.instructor);
       l.teamNotes = rec.notes ? String(rec.notes) : '';
+      rememberTeam(id, rec);
       if (patch.note) delete state.drafts[key];
       state.msgs[key] = { text: 'Saved. The team sees it after Refresh.' };
       if (moving) {
@@ -1310,6 +1361,190 @@
   function setInstructor(l, name) {
     l.instructor = name || '';
     state.model.instructors = instructorColors(state.model.lessons);
+  }
+
+  // Keeps the loaded data in step with a save, so the page can be rebuilt
+  // (after removing or adding a client) without losing it.
+  function rememberTeam(id, rec) {
+    if (!state.data) return;
+    state.data.team = state.data.team || {};
+    state.data.team[id] = Object.assign({}, state.data.team[id], rec);
+  }
+  function rebuild() {
+    const events = state.model ? state.model.events : null;
+    state.model = buildModel(state.data);
+    if (events) state.model.events = events;
+    renderKeepFocus();
+  }
+
+  // ---------- Add or remove clients ----------
+  // The add form has a box for each column the dashboard found on the
+  // Lesson Requests tab. A new client goes in as a new row at the bottom.
+  function addFields(m) {
+    const c = m.cols;
+    const f = [];
+    if (c.name) f.push({ k: 'name', label: 'Name', col: c.name, req: true });
+    else {
+      if (c.first) f.push({ k: 'first', label: 'First name', col: c.first, req: true });
+      if (c.last) f.push({ k: 'last', label: 'Last name', col: c.last });
+    }
+    if (c.phone) f.push({ k: 'phone', label: 'Phone', col: c.phone, type: 'tel' });
+    if (c.email) f.push({ k: 'email', label: 'Email', col: c.email, type: 'email' });
+    if (c.type) f.push({ k: 'type', label: 'Lesson type', col: c.type });
+    if (c.date) f.push({ k: 'date', label: 'Lesson date', col: c.date, type: 'date' });
+    if (c.time) f.push({ k: 'time', label: 'Time', col: c.time, hint: 'e.g. 9:00 AM' });
+    if (c.avail) f.push({ k: 'avail', label: 'Availability', col: c.avail, hint: 'e.g. Weekends' });
+    if (c.instructor) f.push({ k: 'instructor', label: 'Instructor', col: c.instructor, select: true });
+    if (c.notes) f.push({ k: 'notes', label: 'Notes', col: c.notes });
+    return f;
+  }
+
+  function renderManage() {
+    const m = state.model;
+    const box = $('manage');
+    box.hidden = !m.headers.length;
+    if (box.hidden) return;
+    const ready = m.teamReady;
+    const busy = state.manageBusy;
+    if (document.activeElement !== $('manage-by')) $('manage-by').value = myName;
+    $('add-open').setAttribute('aria-expanded', String(state.manage === 'add'));
+    $('remove-open').setAttribute('aria-expanded', String(state.manage === 'remove'));
+
+    // Add form: rebuilt only when the columns or instructors change, so typing isn't lost.
+    const fields = addFields(m);
+    const names = instructorNames(m);
+    const sig = JSON.stringify([fields.map((f) => f.col), names, busy]);
+    const form = $('add-form');
+    form.hidden = state.manage !== 'add';
+    if (sig !== state.addSig) {
+      state.addSig = sig;
+      const off = busy ? ' disabled' : '';
+      form.innerHTML = '<div class="book-grid">' + fields.map((f) => {
+        const v = state.addDraft[f.k] || '';
+        const input = f.select
+          ? '<select class="field" name="' + f.k + '"' + off + '><option value="">No instructor yet</option>' +
+            names.map((n) => '<option value="' + esc(n) + '"' + (instKey(n) === instKey(v) ? ' selected' : '') + '>' + esc(n) + '</option>').join('') + '</select>'
+          : '<input class="field" name="' + f.k + '" type="' + (f.type || 'text') + '" value="' + esc(v) + '" maxlength="300"' +
+            (f.hint ? ' placeholder="' + esc(f.hint) + '"' : '') + (f.req ? ' required' : '') + off + '>';
+        return '<label>' + esc(f.label) + input + '</label>';
+      }).join('') + '</div>' +
+        '<div class="note-actions"><button class="btn btn-primary" type="submit"' + off + '>' + (busy ? 'Adding…' : 'Add client') + '</button>' +
+        '<button class="btn" type="button" data-close="add"' + off + '>Cancel</button></div>';
+    }
+
+    // Remove: pick any client on the dashboard.
+    const rform = $('remove-form');
+    rform.hidden = state.manage !== 'remove';
+    const pick = $('remove-pick');
+    const cur = pick.value;
+    const opts = m.lessons.slice().sort((a, b) => a.name.localeCompare(b.name));
+    pick.innerHTML = '<option value="">Pick a client</option>' + opts.map((l) => {
+      const extra = [l.type, l.submitted ? fmtDay(l.submitted) : ''].filter(Boolean).join(', ');
+      return '<option value="' + esc(l.id) + '">' + esc((l.name || 'Unnamed request') + (extra ? ' (' + extra + ')' : '')) + '</option>';
+    }).join('');
+    pick.value = opts.some((l) => l.id === cur) ? cur : '';
+    rform.querySelectorAll('button, select').forEach((b) => { b.disabled = busy || !ready; });
+
+    const msg = state.manageMsg;
+    $('manage-msg').textContent = msg ? msg.text : '';
+    $('manage-msg').classList.toggle('error', !!(msg && msg.error));
+
+    // Removed clients, each with a button to bring them back.
+    $('removed-box').hidden = !m.removed.length;
+    $('removed-count').textContent = String(m.removed.length);
+    $('removed-list').innerHTML = m.removed.map((l) =>
+      '<li><span><strong>' + esc(l.name || 'Unnamed request') + '</strong>' + (l.phone ? ' · ' + esc(fmtPhone(l.phone)) : '') +
+      (l.type ? ' · ' + esc(l.type) : '') + '</span>' +
+      '<button class="btn" type="button" data-restore="' + esc(l.id) + '"' + (busy || !ready ? ' disabled' : '') + '>Bring back</button></li>').join('');
+  }
+
+  function manageNeedsName() {
+    if (myName.trim()) return false;
+    state.manageMsg = { text: 'Type your name next to “Your name” first, so the team knows who made the change.', error: true };
+    renderManage();
+    $('manage-by').focus();
+    return true;
+  }
+
+  async function setRemoved(id, removed) {
+    const m = state.model;
+    const l = m && m.byId[id];
+    if (!l || state.manageBusy || manageNeedsName()) return;
+    const who = l.name || 'The client';
+    state.manageBusy = true;
+    state.manageMsg = { text: removed ? 'Removing…' : 'Bringing back…' };
+    renderManage();
+    try {
+      const rec = await saveTeam(l, { removed });
+      rememberTeam(id, rec);
+      state.manageMsg = { text: removed
+        ? who + ' was removed. Their row is still on the sheet. To undo, open Removed clients below.'
+        : who + ' is back on the dashboard.' };
+      if (removed) state.manage = null;
+    } catch (err) {
+      state.manageMsg = { text: err.message || 'Couldn’t save.', error: true };
+    } finally {
+      state.manageBusy = false;
+      state.addSig = '';
+      rebuild();
+    }
+  }
+
+  async function addClient() {
+    const m = state.model;
+    if (!m || state.manageBusy || manageNeedsName()) return;
+    const fields = addFields(m);
+    const values = {};
+    fields.forEach((f) => { values[f.col] = String(state.addDraft[f.k] || '').trim(); });
+    const nameField = fields.find((f) => f.req);
+    if (!nameField || !values[nameField.col]) {
+      state.manageMsg = { text: 'Type the client’s name.', error: true };
+      renderManage();
+      const el = $('add-form').querySelector('[required]');
+      if (el) el.focus();
+      return;
+    }
+    if (m.cols.status) values[m.cols.status] = 'New';
+    const who = fields.filter((f) => f.k === 'name' || f.k === 'first' || f.k === 'last').map((f) => values[f.col]).filter(Boolean).join(' ');
+    state.manageBusy = true;
+    state.manageMsg = { text: 'Adding ' + who + '…' };
+    renderManage();
+    let ok = false;
+    try {
+      if (DEMO) {
+        const row = {};
+        m.headers.forEach((h) => { row[h] = values[h] || ''; });
+        if (m.cols.submitted) {
+          const d = new Date();
+          row[m.cols.submitted] = dayKey(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        }
+        state.data.lessons.rows.push(row);
+      } else {
+        const q = new URLSearchParams({ key: getKey(), action: 'add', by: myName.trim(), fields: JSON.stringify(values) });
+        if (m.cols.submitted) q.set('stamp', m.cols.submitted);
+        const res = await fetch(API_URL.trim() + (API_URL.indexOf('?') >= 0 ? '&' : '?') + q.toString(), { cache: 'no-store' });
+        let json;
+        try { json = JSON.parse(await res.text()); } catch (e) {
+          throw new Error('Couldn’t tell if the client was added. Press Refresh and check before trying again.');
+        }
+        if (json.error === 'unauthorized') throw new Error('The access key no longer works. Click Lock and enter the new key.');
+        if (!json.ok) throw new Error(json.error || 'Couldn’t add the client.');
+        // An older script ignores action=add and just sends the data back.
+        if (!json.added) throw new Error(MANAGE_UPDATE_MSG);
+      }
+      ok = true;
+      state.addDraft = {};
+      state.manage = null;
+      state.manageMsg = { text: who + ' was added to Lesson requests and to the sheet.' };
+    } catch (err) {
+      state.manageMsg = { text: err.message || 'Couldn’t add the client.', error: true };
+    } finally {
+      state.manageBusy = false;
+      state.addSig = '';
+    }
+    if (ok && !DEMO) { renderManage(); await load(); }
+    else if (ok) rebuild();
+    else renderManage();
   }
 
   // Calendar writes go through the same web app as notes (GET ...&action=...).
@@ -1463,6 +1698,38 @@
     myName = ev.target.value;
     nameStore.set(myName.trim());
     document.querySelectorAll('.note-form .by').forEach((f) => { f.value = myName; });
+    $('manage-by').value = myName;
+  });
+  $('manage-by').addEventListener('input', (ev) => {
+    myName = ev.target.value;
+    nameStore.set(myName.trim());
+    document.querySelectorAll('.note-form .by').forEach((f) => { f.value = myName; });
+    $('ev-by').value = myName;
+  });
+  const openManage = (which) => {
+    if (!state.model) return;
+    state.manage = state.manage === which ? null : which;
+    state.manageMsg = null;
+    renderManage();
+    const first = state.manage === 'add' ? $('add-form').querySelector('input, select') : state.manage === 'remove' ? $('remove-pick') : null;
+    if (first) first.focus();
+  };
+  $('add-open').addEventListener('click', () => openManage('add'));
+  $('remove-open').addEventListener('click', () => openManage('remove'));
+  $('manage').addEventListener('click', (e) => {
+    const close = e.target.closest('[data-close]');
+    if (close) { state.manage = null; renderManage(); return; }
+    const back = e.target.closest('[data-restore]');
+    if (back && !back.disabled) setRemoved(back.dataset.restore, false);
+  });
+  $('add-form').addEventListener('input', (e) => { if (e.target.name) state.addDraft[e.target.name] = e.target.value; });
+  $('add-form').addEventListener('change', (e) => { if (e.target.name) state.addDraft[e.target.name] = e.target.value; });
+  $('add-form').addEventListener('submit', (e) => { e.preventDefault(); addClient(); });
+  $('remove-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = $('remove-pick').value;
+    if (!id) { state.manageMsg = { text: 'Pick the client to remove.', error: true }; renderManage(); $('remove-pick').focus(); return; }
+    setRemoved(id, true);
   });
 
   // ---------- Calendar ----------
@@ -1959,6 +2226,7 @@
       nameStore.set(myName.trim());
       document.querySelectorAll('.note-form .by').forEach((f) => { if (f !== e.target) f.value = myName; });
       $('ev-by').value = myName;
+      $('manage-by').value = myName;
     }
   }
   function noteSubmit(e) {
