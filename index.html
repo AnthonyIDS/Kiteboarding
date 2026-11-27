@@ -167,6 +167,7 @@
   .status-filter { height: 38px; padding: 0 10px; border: 1px solid transparent; border-radius: 10px; background: var(--surface-2); color: var(--text); max-width: 32%; }
   .panel-body { padding: 0 18px 18px; min-width: 0; }
   .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  .lessons-hidden { color: var(--muted); font-size: 13.5px; margin: -4px 0 12px; }
   .note-error { color: var(--danger); padding: 16px 0; }
 
   /* Lesson request cards */
@@ -556,9 +557,10 @@
       </div>
       <select class="status-filter" id="status-filter" aria-label="Filter by status"><option value="">All statuses</option></select>
       <select class="status-filter" id="client-filter" aria-label="Filter by client type">
-        <option value="">All clients</option><option value="New">New</option><option value="Repeat">Repeat</option><option value="Complete">Complete</option>
+        <option value="">Active clients</option><option value="New">New</option><option value="Repeat">Repeat</option><option value="Complete">Complete</option>
       </select>
     </div>
+    <div class="lessons-hidden" id="lessons-hidden" hidden></div>
     <div class="manage" id="manage" hidden>
       <div class="manage-row">
         <h3>Add or remove clients</h3>
@@ -1108,14 +1110,25 @@
       '</div><div class="kpi-value">' + esc(t.value) + '</div><div class="kpi-sub">' + esc(t.sub) + '</div></div>').join('');
   }
 
+  // Clients marked Complete have graduated. They are left out of every client
+  // list except Graduated Students (Instructor's clients) and the Complete filter.
+  const isActive = (l) => l.client !== 'Complete';
+
   function renderLessons() {
     const m = state.model;
     const q = $('lessons-q').value.trim().toLowerCase();
     const st = $('status-filter').value;
     const ct = $('client-filter').value;
-    const list = m.lessons.filter((l) => (!q || l.hay.indexOf(q) >= 0) && (!st || l.status === st) && (!ct || l.client === ct));
+    // "Active clients" (the default) leaves out clients marked Complete.
+    // They show only when the filter is set to Complete.
+    const pool = ct ? m.lessons : m.lessons.filter(isActive);
+    const list = pool.filter((l) => (!q || l.hay.indexOf(q) >= 0) && (!st || l.status === st) && (!ct || l.client === ct));
     const filtered = q || st || ct;
-    $('lessons-count').textContent = filtered ? list.length + ' of ' + m.lessons.length : String(m.lessons.length);
+    $('lessons-count').textContent = filtered ? list.length + ' of ' + pool.length : String(pool.length);
+    const hidden = ct ? 0 : m.lessons.length - pool.length;
+    $('lessons-hidden').hidden = !hidden;
+    $('lessons-hidden').textContent = hidden ? hidden + (hidden === 1 ? ' client is' : ' clients are') +
+      ' marked Complete and hidden here. Pick “Complete” in the client filter to see them.' : '';
     const box = $('lessons');
     if (m.lessonsError && !m.lessons.length) {
       box.innerHTML = '<div class="note-error">' + esc(m.lessonsError) + '</div>';
@@ -1438,10 +1451,14 @@
     const pick = $('remove-pick');
     const cur = pick.value;
     const opts = m.lessons.slice().sort((a, b) => a.name.localeCompare(b.name));
-    pick.innerHTML = '<option value="">Pick a client</option>' + opts.map((l) => {
+    const optHtml = (l) => {
       const extra = [l.type, l.submitted ? fmtDay(l.submitted) : ''].filter(Boolean).join(', ');
       return '<option value="' + esc(l.id) + '">' + esc((l.name || 'Unnamed request') + (extra ? ' (' + extra + ')' : '')) + '</option>';
-    }).join('');
+    };
+    // Active clients first; Complete clients sit apart under Graduated Students.
+    const grads = opts.filter((l) => !isActive(l));
+    pick.innerHTML = '<option value="">Pick a client</option>' + opts.filter(isActive).map(optHtml).join('') +
+      (grads.length ? '<optgroup label="Graduated Students">' + grads.map(optHtml).join('') + '</optgroup>' : '');
     pick.value = opts.some((l) => l.id === cur) ? cur : '';
     rform.querySelectorAll('button, select').forEach((b) => { b.disabled = busy || !ready; });
 
@@ -1788,12 +1805,13 @@
     }
     const cols = [['flexible', 'Flexible'], ['weekends', 'Weekends'], ['weekdays', 'Weekdays']];
     const groups = {};
-    cols.forEach((c) => { groups[c[0]] = m.groups[c[0]].filter(ofInst(inst)); });
+    cols.forEach((c) => { groups[c[0]] = m.groups[c[0]].filter(isActive).filter(ofInst(inst)); });
+    const noAvail = m.lessons.filter((l) => isActive(l) && isOpen(l.status) && !l.dows.size).length;
     const people = new Set(cols.reduce((all, c) => all.concat(groups[c[0]]), []));
     $('avail-count').textContent = String(people.size);
     let note = (inst === ALL_INST ? 'Open requests' : inst === NO_INST ? 'Open requests with no instructor yet,' : inst + '’s open requests,') +
       ' grouped by their “' + m.availCol + '”. Someone free on both a weekday and a weekend day is in both lists.';
-    if (m.noAvail) note += ' ' + m.noAvail + (m.noAvail === 1 ? ' student has' : ' students have') + ' no availability the dashboard can read.';
+    if (noAvail) note += ' ' + noAvail + (noAvail === 1 ? ' student has' : ' students have') + ' no availability the dashboard can read.';
     $('avail-note').textContent = note;
     $('avail-legend').innerHTML = m.instCol ? legendHtml() : '';
     $('avail-legend').hidden = !m.instCol;
@@ -1928,9 +1946,10 @@
   function dayItems(d) {
     const m = state.model;
     const k = dayKey(d);
-    const dated = m.days[k] || [];
+    // Complete clients are left off the calendar.
+    const dated = (m.days[k] || []).filter((e) => isActive(e.lesson));
     if (startOfDay(d) < startOfDay(new Date())) return dated;
-    const avail = m.weekly[d.getDay()].filter((e) => !dated.some((x) => x.lesson === e.lesson));
+    const avail = m.weekly[d.getDay()].filter((e) => isActive(e.lesson) && !dated.some((x) => x.lesson === e.lesson));
     return dated.concat(avail);
   }
 
