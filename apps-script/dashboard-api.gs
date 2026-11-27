@@ -2,14 +2,17 @@
  * Kiteboarding St. Petersburg: team dashboard API (dashboard-api.gs)
  *
  * Serves the "Lesson Requests" tab of your Google Sheet to the GitHub
- * dashboard as JSON. It never changes the Lesson Requests tab, so the
- * website form that writes there keeps working.
+ * dashboard as JSON. It never edits or deletes a row on the Lesson Requests
+ * tab, so the website form that writes there keeps working. The only thing
+ * it does there is "Add client", which adds one new row at the bottom.
  *
  * Team notes, the "Jetski Needed" switch, the New / Repeat / Complete client
  * switch and instructor changes are saved on a separate tab, "Dashboard
  * Notes", which the script creates the first time someone saves. One row per
  * student: Request ID, Student, Jetski Needed, Notes, Updated, Updated By,
- * Client Type, Instructor. Newest notes are at the top of the Notes cell.
+ * Client Type, Instructor, Removed. Newest notes are at the top of the Notes
+ * cell. "Remove client" only sets Removed to Yes, which hides the client on
+ * the dashboard; the row on Lesson Requests stays, so it can be restored.
  * An Instructor set there takes the place of the one on Lesson Requests in
  * the dashboard ("None" means no instructor yet).
  *
@@ -22,8 +25,12 @@
  *   { ok, updated, lessons: { headers: [...], rows: [{ header: value }] },
  *     team: { <request id>: { jetski, client, instructor, notes, updated, by } } }
  * GET ...&action=save&id=...&student=...&by=...[&jetski=yes|no][&client=new|repeat|complete]
- *       [&instructor=<name>|none][&note=...]
+ *       [&instructor=<name>|none][&removed=yes|no][&note=...]
  *   saves to Dashboard Notes and returns { ok, id, record }
+ * GET ...&action=add&by=...&fields=<JSON { header: value }>[&stamp=<header>]
+ *   adds one client as a new row at the bottom of Lesson Requests. Only
+ *   headers already on the tab are filled; "stamp" names the column that
+ *   gets the time it was added. Returns { ok, added: { row, name } }
  * GET ...&action=book&id=...&student=...&by=...&instructor=...&date=yyyy-MM-dd
  *       &start=HH:mm&minutes=...[&phone=...][&email=...][&lesson=...]
  *   adds the lesson to that instructor's Google Calendar (only the calendars
@@ -66,7 +73,7 @@ const DASH_CALENDARS = {
 const DASH_LESSONS_TAB = 'Lesson Requests';
 const DASH_NOTES_TAB = 'Dashboard Notes';
 // New columns go last so tabs made before them keep their columns.
-const DASH_NOTES_HEADERS = ['Request ID', 'Student', 'Jetski Needed', 'Notes', 'Updated', 'Updated By', 'Client Type', 'Instructor'];
+const DASH_NOTES_HEADERS = ['Request ID', 'Student', 'Jetski Needed', 'Notes', 'Updated', 'Updated By', 'Client Type', 'Instructor', 'Removed'];
 const DASH_NOTE_MAX = 2000;     // longest single note
 const DASH_CELL_MAX = 45000;    // Sheets cells hold 50,000 characters
 const DASH_TAG = 'kspDashboard'; // event tag: the request id it was booked for
@@ -86,6 +93,9 @@ function doGet(e) {
     const tz = ss.getSpreadsheetTimeZone();
     if (e.parameter.action === 'save') {
       return dashJson_(dashSave_(ss, tz, e.parameter));
+    }
+    if (e.parameter.action === 'add') {
+      return dashJson_(dashAddClient_(ss, tz, e.parameter));
     }
     if (e.parameter.action === 'book') {
       return dashJson_(dashBook_(ss, tz, e.parameter));
@@ -213,7 +223,7 @@ function dashCell_(value, displayValue, tz) {
 
 // ---- Team notes and Jetski Needed (the "Dashboard Notes" tab) ------------
 
-/** { <request id>: { jetski: true|false|null, client: 'New'|'Repeat'|'Complete'|'', instructor: name|'None'|'', notes, updated, by } } */
+/** { <request id>: { jetski: true|false|null, client: 'New'|'Repeat'|'Complete'|'', instructor: name|'None'|'', removed: true|false, notes, updated, by } } */
 function dashReadTeam_(ss) {
   const out = {};
   const sheet = ss.getSheetByName(DASH_NOTES_TAB);
@@ -222,12 +232,12 @@ function dashReadTeam_(ss) {
   values.forEach(function (r) {
     const id = String(r[0]).trim();
     if (!id) return;
-    out[id] = { jetski: dashYesNo_(r[2]), client: dashClientType_(r[6]), instructor: dashInstructorName_(r[7]), notes: r[3], updated: r[4], by: r[5] };
+    out[id] = { jetski: dashYesNo_(r[2]), client: dashClientType_(r[6]), instructor: dashInstructorName_(r[7]), removed: dashYesNo_(r[8]) === true, notes: r[3], updated: r[4], by: r[5] };
   });
   return out;
 }
 
-/** Saves one student's Jetski setting, New / Repeat / Complete, instructor, and/or a new note. */
+/** Saves one student's Jetski setting, New / Repeat / Complete, instructor, removed, and/or a new note. */
 function dashSave_(ss, tz, p) {
   const id = dashClean_(p.id, 300);
   if (!id) return { ok: false, error: 'Missing request id.' };
@@ -237,7 +247,8 @@ function dashSave_(ss, tz, p) {
   const jetski = p.jetski === undefined ? null : dashYesNo_(p.jetski);
   const client = dashClientType_(p.client);
   const instructor = p.instructor === undefined ? '' : dashInstructorName_(p.instructor) || 'None';
-  if (!note && jetski === null && !client && !instructor) return { ok: false, error: 'Nothing to save.' };
+  const removed = p.removed === undefined ? null : dashYesNo_(p.removed);
+  if (!note && jetski === null && !client && !instructor && removed === null) return { ok: false, error: 'Nothing to save.' };
 
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -249,8 +260,8 @@ function dashSave_(ss, tz, p) {
       sheet.setFrozenRows(1);
       sheet.setColumnWidth(4, 420);
     }
-    // A tab made before Client Type or Instructor existed gets those headers added.
-    [7, 8].forEach(function (col) {
+    // A tab made before Client Type, Instructor or Removed existed gets those headers added.
+    [7, 8, 9].forEach(function (col) {
       const head = sheet.getRange(1, col);
       if (!String(head.getDisplayValue()).trim()) head.setValue(DASH_NOTES_HEADERS[col - 1]).setFontWeight('bold');
     });
@@ -261,7 +272,7 @@ function dashSave_(ss, tz, p) {
       if (String(ids[i][0]).trim() === id) { rowNum = i + 2; break; }
     }
     const range = rowNum ? sheet.getRange(rowNum, 1, 1, DASH_NOTES_HEADERS.length) : null;
-    const row = range ? range.getDisplayValues()[0] : [id, '', '', '', '', '', '', ''];
+    const row = range ? range.getDisplayValues()[0] : [id, '', '', '', '', '', '', '', ''];
 
     const stamp = Utilities.formatDate(new Date(), tz, 'MMM d, h:mm a');
     const student = dashClean_(p.student, 120);
@@ -274,6 +285,10 @@ function dashSave_(ss, tz, p) {
       lines.push('Instructor changed to ' + (instructor === 'None' ? 'no instructor yet' : instructor) + '.');
     }
     if (instructor) row[7] = instructor;
+    if (removed !== null && removed !== (dashYesNo_(row[8]) === true)) {
+      lines.push(removed ? 'Removed from the dashboard.' : 'Restored to the dashboard.');
+    }
+    if (removed !== null) row[8] = removed ? 'Yes' : '';
     if (note) lines.unshift(note);
     if (lines.length) {
       let notes = lines.map(function (x) { return stamp + ' · ' + by + ': ' + x; }).join('\n') + (row[3] ? '\n' + row[3] : '');
@@ -286,7 +301,61 @@ function dashSave_(ss, tz, p) {
     const target = range || sheet.getRange(last + 1, 1, 1, DASH_NOTES_HEADERS.length);
     target.setValues([row.map(function (v) { return v instanceof Date ? v : dashText_(v); })]).setWrap(true);
     target.getCell(1, 5).setNumberFormat('mmm d, h:mm am/pm');
-    return { ok: true, id: id, record: { jetski: dashYesNo_(row[2]), client: dashClientType_(row[6]), instructor: dashInstructorName_(row[7]), notes: row[3], updated: stamp, by: by } };
+    return { ok: true, id: id, record: { jetski: dashYesNo_(row[2]), client: dashClientType_(row[6]), instructor: dashInstructorName_(row[7]), removed: dashYesNo_(row[8]) === true, notes: row[3], updated: stamp, by: by } };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ---- Add a client (one new row at the bottom of Lesson Requests) ---------
+
+function dashAddClient_(ss, tz, p) {
+  const by = dashClean_(p.by, 60);
+  if (!by) return { ok: false, error: 'Enter your name before adding a client.' };
+  let fields;
+  try { fields = JSON.parse(String(p.fields || '{}')); } catch (err) { return { ok: false, error: 'Couldn\'t read the new client.' }; }
+  if (!fields || typeof fields !== 'object') return { ok: false, error: 'Couldn\'t read the new client.' };
+  const sheet = ss.getSheetByName(DASH_LESSONS_TAB);
+  if (!sheet) return { ok: false, error: 'No "' + DASH_LESSONS_TAB + '" tab in "' + ss.getName() + '".' };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const lastCol = sheet.getLastColumn();
+    if (lastCol < 1) return { ok: false, error: 'The ' + DASH_LESSONS_TAB + ' tab has no header row.' };
+    // Same header names the dashboard reads (duplicates get " (2)", ...).
+    const seen = {};
+    const names = sheet.getRange(1, 1, 1, lastCol).getDisplayValues()[0].map(function (h) {
+      const base = String(h).trim();
+      if (!base) return '';
+      let name = base;
+      let n = 2;
+      while (seen[name]) name = base + ' (' + n++ + ')';
+      seen[name] = true;
+      return name;
+    });
+    const row = names.map(function () { return ''; });
+    let filled = false;
+    Object.keys(fields).forEach(function (h) {
+      const i = names.indexOf(String(h));
+      const v = dashClean_(fields[h], 2000);
+      if (i < 0 || !v) return;
+      // A date from the date picker goes in as a real date.
+      row[i] = /^\d{4}-\d{2}-\d{2}$/.test(v) ? Utilities.parseDate(v, tz, 'yyyy-MM-dd') : dashText_(v);
+      filled = true;
+    });
+    if (!filled) return { ok: false, error: 'Type the client\'s name.' };
+    const stampCol = p.stamp ? names.indexOf(String(p.stamp)) : -1;
+    if (stampCol >= 0) row[stampCol] = new Date();
+
+    const rowNum = sheet.getLastRow() + 1;
+    sheet.getRange(rowNum, 1, 1, row.length).setValues([row]);
+    if (stampCol >= 0) {
+      // Same look as the rows above it, if they have one.
+      const above = rowNum > 2 ? sheet.getRange(rowNum - 1, stampCol + 1).getNumberFormat() : '';
+      sheet.getRange(rowNum, stampCol + 1).setNumberFormat(above && above !== 'General' ? above : 'm/d/yyyy h:mm:ss');
+    }
+    return { ok: true, added: { row: rowNum, by: by } };
   } finally {
     lock.releaseLock();
   }
